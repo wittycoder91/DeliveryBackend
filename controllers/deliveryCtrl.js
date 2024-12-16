@@ -62,8 +62,14 @@ const deliveryCtrl = () => {
           .toArray();
 
         if (latestDelivery) {
-          if (latestDelivery[0].po === 0) curPO = 240001;
-          else curPO = latestDelivery[0].po + 1;
+          const currentYear = new Date().getFullYear();
+          const yearLastTwoDigits = currentYear % 100;
+
+          if (latestDelivery[0].po === 0) {
+            curPO = yearLastTwoDigits * 10000 + 1;
+          } else {
+            curPO = latestDelivery[0].po + 1;
+          }
         }
       }
     }
@@ -381,10 +387,13 @@ const deliveryCtrl = () => {
             .toArray();
 
           // Determine the new `po` value
+          const currentYear = new Date().getFullYear();
+          const yearLastTwoDigits = currentYear % 100;
+
           curPO =
             latestDelivery.length > 0 && latestDelivery[0].po !== 0
               ? latestDelivery[0].po + 1
-              : 240001;
+              : yearLastTwoDigits * 10000 + 1;
         }
 
         // Build the update object dynamically

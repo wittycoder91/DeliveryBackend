@@ -61,16 +61,14 @@ const deliveryCtrl = () => {
           .limit(1)
           .toArray();
 
-        if (latestDelivery) {
           const currentYear = new Date().getFullYear();
           const yearLastTwoDigits = currentYear % 100;
-
-          if (latestDelivery[0].po === 0) {
+      
+          if (latestDelivery.length === 0 || !latestDelivery[0]?.po) {
             curPO = yearLastTwoDigits * 10000 + 1;
           } else {
             curPO = latestDelivery[0].po + 1;
           }
-        }
       }
     }
 

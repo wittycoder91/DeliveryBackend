@@ -1,12 +1,18 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Double } = require("bson");
-const { getUserCollection } = require("../helpers/db-conn");
+const { getUserCollection, getAdminCollection } = require("../helpers/db-conn");
 
 const AuthCtrl = () => {
   const checkExist = async (email) => {
     const collection = getUserCollection();
     const user = await collection.findOne({ email: email });
+    if (user) return user;
+    return false;
+  };
+  const checkAdminExist = async (userid) => {
+    const collection = getAdminCollection();
+    const user = await collection.findOne({ userid: userid });
     if (user) return user;
     return false;
   };
@@ -79,7 +85,7 @@ const AuthCtrl = () => {
   // Admin Login
   const adminLogin = async (userId, password) => {
     const collection = getAdminCollection();
-    if (!(await checkExist(userId))) {
+    if (!(await checkAdminExist(userId))) {
       return { success: false, message: "User doesn't exists in the database" };
     }
 

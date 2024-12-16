@@ -71,17 +71,15 @@ const dashboardCtrl = () => {
           message: "User not found.",
         };
       }
+
+      console.log(userId)
       // Get Total delivery count
       const selDeliveryCount = await deliveryLogsCollection.countDocuments({
         userId: userId,
       });
+      console.log(selDeliveryCount)
       if (selDeliveryCount) {
         totalDelivery = selDeliveryCount;
-      } else {
-        return {
-          success: false,
-          message: "Delivery not found.",
-        };
       }
       // Get Total accepted delivery count
       const selAcceptedDeliveryCount =
@@ -91,11 +89,6 @@ const dashboardCtrl = () => {
         });
       if (selAcceptedDeliveryCount) {
         totalAccepted = selAcceptedDeliveryCount;
-      } else {
-        return {
-          success: false,
-          message: "Delivery not found.",
-        };
       }
       // Get Total waiting delivery count
       const selWaitingDeliveryCount = await deliveryCollection.countDocuments({
@@ -104,11 +97,6 @@ const dashboardCtrl = () => {
       });
       if (selWaitingDeliveryCount) {
         totalWaiting = selWaitingDeliveryCount;
-      } else {
-        return {
-          success: false,
-          message: "Delivery not found.",
-        };
       }
 
       return {
@@ -255,11 +243,6 @@ const dashboardCtrl = () => {
       });
       if (selWaitingDeliveryCount) {
         totalWaiting = selWaitingDeliveryCount;
-      } else {
-        return {
-          success: false,
-          message: "Delivery not found.",
-        };
       }
       // Get Total accepted delivery count
       const selAcceptedDeliveryCount =
@@ -268,11 +251,6 @@ const dashboardCtrl = () => {
         });
       if (selAcceptedDeliveryCount) {
         totalAccepted = selAcceptedDeliveryCount;
-      } else {
-        return {
-          success: false,
-          message: "Delivery not found.",
-        };
       }
 
       return {

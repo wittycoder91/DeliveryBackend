@@ -37,6 +37,9 @@ getFAQCollection = () => {
 getPackageCollection = () => {
   return db.collection("packages");
 };
+getQualityCollection = () => {
+  return db.collection("qualitys");
+};
 getDeliveryCollection = () => {
   return db.collection("deliverys");
 };
@@ -53,6 +56,7 @@ module.exports = {
   getSettingCollection,
   getFAQCollection,
   getPackageCollection,
+  getQualityCollection,
   getDeliveryCollection,
   getDeliveryLogsCollection,
 };

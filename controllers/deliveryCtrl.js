@@ -1,10 +1,11 @@
 const axios = require("axios");
-const { ObjectId } = require("mongodb");
+const { ObjectId, Double, Int32 } = require("mongodb");
 const {
   getDeliveryCollection,
   getUserCollection,
   getMaterialCollection,
   getPackageCollection,
+  getQualityCollection,
   getDeliveryLogsCollection,
   getSettingCollection,
 } = require("../helpers/db-conn");
@@ -43,6 +44,7 @@ const deliveryCtrl = () => {
     avatarPath
   ) => {
     const collection = getDeliveryCollection();
+    const collectionLogs = getDeliveryLogsCollection();
     const collectionUser = getUserCollection();
     const collectionMaterial = getMaterialCollection();
     const collectionPackage = getPackageCollection();
@@ -61,14 +63,24 @@ const deliveryCtrl = () => {
           .limit(1)
           .toArray();
 
-          const currentYear = new Date().getFullYear();
-          const yearLastTwoDigits = currentYear % 100;
-      
-          if (latestDelivery.length === 0 || !latestDelivery[0]?.po) {
+        const currentYear = new Date().getFullYear();
+        const yearLastTwoDigits = currentYear % 100;
+
+        if (latestDelivery.length === 0 || !latestDelivery[0]?.po) {
+          const latestLogsDelivery = await collectionLogs
+            .find()
+            .sort({ po: -1 })
+            .limit(1)
+            .toArray();
+
+          if (latestLogsDelivery.length === 0 || !latestLogsDelivery[0]?.po) {
             curPO = yearLastTwoDigits * 10000 + 1;
           } else {
-            curPO = latestDelivery[0].po + 1;
+            curPO = latestLogsDelivery[0].po + 1;
           }
+        } else {
+          curPO = latestDelivery[0].po + 1;
+        }
       }
     }
 
@@ -144,6 +156,7 @@ const deliveryCtrl = () => {
   const getLastestDelivery = async () => {
     try {
       const collection = getDeliveryCollection();
+      const loggCollection = getDeliveryLogsCollection();
 
       const latestDelivery = await collection
         .find()
@@ -154,7 +167,17 @@ const deliveryCtrl = () => {
       if (latestDelivery && latestDelivery.length > 0) {
         return { success: true, data: latestDelivery[0] };
       } else {
-        return { success: false, message: "No deliveries found" };
+        const latestLogDelivery = await loggCollection
+          .find()
+          .sort({ _id: -1 })
+          .limit(1)
+          .toArray();
+
+        if (latestLogDelivery && latestLogDelivery.length > 0) {
+          return { success: true, data: latestLogDelivery[0] };
+        } else {
+          return { success: false, message: "No deliveries found" };
+        }
       }
     } catch (error) {
       return { success: false, message: "An error occurred: " + error.message };
@@ -345,6 +368,7 @@ const deliveryCtrl = () => {
   const updateSelDelivery = async (selDeliveryId, status) => {
     try {
       const collection = getDeliveryCollection();
+      const collectionLogs = getDeliveryLogsCollection();
       const usersCollection = getUserCollection();
       const materialsCollection = getMaterialCollection();
       const packagesCollection = getPackageCollection();
@@ -388,10 +412,21 @@ const deliveryCtrl = () => {
           const currentYear = new Date().getFullYear();
           const yearLastTwoDigits = currentYear % 100;
 
-          curPO =
-            latestDelivery.length > 0 && latestDelivery[0].po !== 0
-              ? latestDelivery[0].po + 1
-              : yearLastTwoDigits * 10000 + 1;
+          if (latestDelivery.length === 0 || !latestDelivery[0]?.po) {
+            const latestLogsDelivery = await collectionLogs
+              .find()
+              .sort({ po: -1 })
+              .limit(1)
+              .toArray();
+
+            if (latestLogsDelivery.length === 0 || !latestLogsDelivery[0]?.po) {
+              curPO = yearLastTwoDigits * 10000 + 1;
+            } else {
+              curPO = latestLogsDelivery[0].po + 1;
+            }
+          } else {
+            curPO = latestDelivery[0].po + 1;
+          }
         }
 
         // Build the update object dynamically
@@ -450,9 +485,16 @@ const deliveryCtrl = () => {
   };
   const addDeliveryFeedback = async (
     selID,
-    curStatus,
-    curDeliveryAmount,
-    curDeliveryFeedback
+    status,
+    totalamount,
+    tareamount,
+    netamount,
+    quality,
+    pkgscount,
+    package,
+    insepction,
+    feedback,
+    feedbackImage
   ) => {
     try {
       const collection = getDeliveryCollection();
@@ -467,7 +509,7 @@ const deliveryCtrl = () => {
       });
 
       if (selData) {
-        selData.status = curStatus + 1;
+        selData.status = parseInt(status) + 1;
 
         let selUserId = selData.userId;
         let curTotalWeight = 0;
@@ -478,8 +520,8 @@ const deliveryCtrl = () => {
         if (selUserData) {
           curTotalWeight = selUserData.totalweight;
         }
-        curTotalWeight = curDeliveryAmount + curTotalWeight;
-        curTotalWeight = parseFloat(curTotalWeight.toFixed(2));
+        curTotalWeight = parseFloat(totalamount) + parseFloat(curTotalWeight);
+        curTotalWeight = parseFloat(curTotalWeight).toFixed(2);
 
         // Get the loyalty data
         const settingCollection = getSettingCollection();
@@ -505,12 +547,21 @@ const deliveryCtrl = () => {
         });
 
         const { _id, ...dataWithoutId } = selData;
-        dataWithoutId.weight = curDeliveryAmount;
-        dataWithoutId.feedback = curDeliveryFeedback;
+        dataWithoutId.weight = new Double(parseFloat(totalamount).toFixed(2));
+        dataWithoutId.tareamount = new Double(
+          parseFloat(tareamount).toFixed(2)
+        );
+        dataWithoutId.netamount = new Double(parseFloat(netamount).toFixed(2));
+        dataWithoutId.quality = quality;
+        dataWithoutId.countpackage = new Int32(pkgscount);
+        dataWithoutId.packaging = package;
+        dataWithoutId.insepction = insepction;
+        dataWithoutId.feedback = feedback;
+        dataWithoutId.feedbackImage = feedbackImage;
 
         // // Update the user collection and return the updated data
         const updateFields = {
-          totalweight: curTotalWeight,
+          totalweight: new Double(parseFloat(curTotalWeight)),
           loyalty: valLoyalty,
         };
         updateData = await usersCollection.findOneAndUpdate(
@@ -553,7 +604,82 @@ const deliveryCtrl = () => {
         // Emit the updated notification count to all clients
         axios.post("http://localhost:6000/broadcast", {
           type: "UPDATE_DELIVERY",
-          message: "A new delivery has been added",
+          message: "A new delivery log has been added",
+          count: 1,
+          delieryData: updatedDelivery,
+        });
+
+        return {
+          success: true,
+          message:
+            "Your delivery request status has been successfully updated.",
+        };
+      } else {
+        return { success: false, message: "MongDB API Error" };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const addRejectDelivery = async (selID, reason, uploadedFilePaths) => {
+    try {
+      const collection = getDeliveryCollection();
+      const usersCollection = getUserCollection();
+      const materialsCollection = getMaterialCollection();
+      const packagesCollection = getPackageCollection();
+      const deliverylogsCollection = getDeliveryLogsCollection();
+
+      let updateData = {};
+      const selData = await collection.findOne({
+        _id: new ObjectId(selID),
+      });
+
+      if (selData) {
+        // Remove the delivery data
+        await collection.deleteOne({
+          _id: new ObjectId(selID),
+        });
+
+        const { _id, ...dataWithoutId } = selData;
+        dataWithoutId.status = -1;
+        dataWithoutId.feedback = reason;
+        dataWithoutId.rejectImages = uploadedFilePaths;
+
+        // Insert the data to the deliverylogs collection
+        const insertResult = await deliverylogsCollection.insertOne(
+          dataWithoutId
+        );
+        updateData = await deliverylogsCollection.findOne({
+          _id: new ObjectId(insertResult.insertedId),
+        });
+      } else {
+        return { success: false, message: "Delivery not found." };
+      }
+
+      if (updateData) {
+        // Fetch details for userId, material, and packaging
+        const user = await usersCollection.findOne({
+          _id: new ObjectId(updateData.userId),
+        });
+        const material = await materialsCollection.findOne({
+          _id: new ObjectId(updateData.material),
+        });
+        const packaging = await packagesCollection.findOne({
+          _id: new ObjectId(updateData.packaging),
+        });
+
+        // Replace the fields in the delivery object
+        const updatedDelivery = {
+          ...updateData,
+          userName: user ? user.name : null,
+          materialName: material ? material.materialName : null,
+          packagingName: packaging ? packaging.name : null,
+        };
+
+        // Emit the updated notification count to all clients
+        axios.post("http://localhost:6000/broadcast", {
+          type: "UPDATE_DELIVERY",
+          message: "A new delivery log has been added",
           count: 1,
           delieryData: updatedDelivery,
         });
@@ -633,11 +759,12 @@ const deliveryCtrl = () => {
               userSelId: { $toObjectId: "$userId" },
               materialId: { $toObjectId: "$material" },
               packageId: { $toObjectId: "$packaging" },
+              qualityId: { $toObjectId: "$quality" },
             },
           },
           {
             $lookup: {
-              from: "materials", // Join with materials collection
+              from: "materials",
               localField: "materialId",
               foreignField: "_id",
               as: "materialDetails",
@@ -645,7 +772,7 @@ const deliveryCtrl = () => {
           },
           {
             $lookup: {
-              from: "users", // Join with users collection
+              from: "users",
               localField: "userSelId",
               foreignField: "_id",
               as: "userDetails",
@@ -653,10 +780,18 @@ const deliveryCtrl = () => {
           },
           {
             $lookup: {
-              from: "packages", // Join with packages collection
+              from: "packages",
               localField: "packageId",
               foreignField: "_id",
               as: "packageDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "qualitys",
+              localField: "qualityId",
+              foreignField: "_id",
+              as: "qualityDetails",
             },
           },
           {
@@ -668,6 +803,9 @@ const deliveryCtrl = () => {
               packageName: {
                 $arrayElemAt: ["$packageDetails.name", 0],
               },
+              qualityName: {
+                $arrayElemAt: ["$qualityDetails.name", 0],
+              },
             },
           },
           {
@@ -675,9 +813,11 @@ const deliveryCtrl = () => {
               "userDetails",
               "materialDetails",
               "packageDetails",
+              "qualityDetails",
               "userSelId",
               "materialId",
               "packageId",
+              "qualityId",
             ],
           },
           {
@@ -713,6 +853,7 @@ const deliveryCtrl = () => {
       const deliveryLogCollection = getDeliveryLogsCollection();
       const usersCollection = getUserCollection();
       const materialsCollection = getMaterialCollection();
+      const qualityCollection = getQualityCollection();
       const packagesCollection = getPackageCollection();
 
       // Find the selected delivery by ID
@@ -733,6 +874,9 @@ const deliveryCtrl = () => {
       const packaging = await packagesCollection.findOne({
         _id: new ObjectId(delivery.packaging),
       });
+      const quality = await qualityCollection.findOne({
+        _id: new ObjectId(delivery.quality),
+      });
 
       // Replace the fields in the delivery object
       const updatedDelivery = {
@@ -740,6 +884,7 @@ const deliveryCtrl = () => {
         username: user ? user.name : null,
         material: material ? material.materialName : null,
         packaging: packaging ? packaging.name : null,
+        quality: quality ? quality.name : null,
       };
 
       return {
@@ -999,11 +1144,12 @@ const deliveryCtrl = () => {
             $addFields: {
               materialId: { $toObjectId: "$material" },
               packageId: { $toObjectId: "$packaging" },
+              qualityId: { $toObjectId: "$quality" },
             },
           },
           {
             $lookup: {
-              from: "materials", // Join with materials collection
+              from: "materials",
               localField: "materialId",
               foreignField: "_id",
               as: "materialDetails",
@@ -1011,10 +1157,18 @@ const deliveryCtrl = () => {
           },
           {
             $lookup: {
-              from: "packages", // Join with packages collection
+              from: "packages",
               localField: "packageId",
               foreignField: "_id",
               as: "packageDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "qualitys",
+              localField: "qualityId",
+              foreignField: "_id",
+              as: "qualityDetails",
             },
           },
           {
@@ -1025,6 +1179,9 @@ const deliveryCtrl = () => {
               packageName: {
                 $arrayElemAt: ["$packageDetails.name", 0],
               },
+              qualityName: {
+                $arrayElemAt: ["$qualityDetails.name", 0],
+              },
             },
           },
           {
@@ -1032,9 +1189,11 @@ const deliveryCtrl = () => {
               "userDetails",
               "materialDetails",
               "packageDetails",
+              "qualityDetails",
               "userSelId",
               "materialId",
               "packageId",
+              "qualityId",
             ],
           },
           {
@@ -1070,6 +1229,7 @@ const deliveryCtrl = () => {
       const deliveryLogCollection = getDeliveryLogsCollection();
       const materialsCollection = getMaterialCollection();
       const packagesCollection = getPackageCollection();
+      const qualityCollection = getQualityCollection();
 
       // Find the selected delivery by ID
       const delivery = await deliveryLogCollection.findOne({
@@ -1086,12 +1246,16 @@ const deliveryCtrl = () => {
       const packaging = await packagesCollection.findOne({
         _id: new ObjectId(delivery.packaging),
       });
+      const quality = await qualityCollection.findOne({
+        _id: new ObjectId(delivery.quality),
+      });
 
       // Replace the fields in the delivery object
       const updatedDelivery = {
         ...delivery,
         material: material ? material.materialName : null,
         packaging: packaging ? packaging.name : null,
+        quality: quality ? quality.name : null,
       };
 
       return {
@@ -1113,6 +1277,7 @@ const deliveryCtrl = () => {
     getSelDelivery,
     updateSelDelivery,
     addDeliveryFeedback,
+    addRejectDelivery,
     getDeliveryLogs,
     getSelDeliveryLog,
     getUserDeliverys,

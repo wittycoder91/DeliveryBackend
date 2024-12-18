@@ -5,6 +5,7 @@ const {
   getMaterialCollection,
   getSettingCollection,
   getPackageCollection,
+  getQualityCollection,
 } = require("../helpers/db-conn");
 
 const settingCtrl = () => {
@@ -113,6 +114,22 @@ const settingCtrl = () => {
   const getAllPackages = async () => {
     try {
       const collection = getPackageCollection();
+      const result = await collection.find().toArray();
+
+      return {
+        success: true,
+        message: "Success!",
+        data: result,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+
+  // Quality Management
+  const getAllQualitys = async () => {
+    try {
+      const collection = getQualityCollection();
       const result = await collection.find().toArray();
 
       return {
@@ -512,6 +529,7 @@ const settingCtrl = () => {
     getSelUserInformation,
     UpdateUserInformation,
     getAllPackages,
+    getAllQualitys,
     getAllMaterials,
     getMaterials,
     addMaterial,

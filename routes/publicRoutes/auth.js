@@ -20,10 +20,10 @@ auth.post("/user/login", async (req, res) => {
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/images/users/"); // Make sure the "uploads" folder exists
+    cb(null, "uploads/images/users/");
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Generate a unique filename
+    cb(null, Date.now() + path.extname(file.originalname));
   },
 });
 const upload = multer({ storage: storage });

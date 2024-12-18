@@ -72,12 +72,10 @@ const dashboardCtrl = () => {
         };
       }
 
-      console.log(userId)
       // Get Total delivery count
       const selDeliveryCount = await deliveryLogsCollection.countDocuments({
         userId: userId,
       });
-      console.log(selDeliveryCount)
       if (selDeliveryCount) {
         totalDelivery = selDeliveryCount;
       }

@@ -106,6 +106,15 @@ setting.get("/admin/get-allpackages", async (req, res) => {
   }
 });
 
+// Quality Management
+setting.get("/admin/get-qualitys", async (req, res) => {
+  try {
+    res.send(await settingCtrl.getAllQualitys());
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+
 // Material Management
 setting.get("/admin/get-allmaterials", async (req, res) => {
   try {

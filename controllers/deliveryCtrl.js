@@ -1433,6 +1433,9 @@ const deliveryCtrl = () => {
       const materialsCollection = getMaterialCollection();
       const packagesCollection = getPackageCollection();
       const qualityCollection = getQualityCollection();
+      const colorsCollection = getDeliveryColorsCollection();
+      const residuesCollection = getDeliveryResiduesCollection();
+      const conditionsCollection = getDeliveryConditionsCollection();
 
       // Find the selected delivery by ID
       const delivery = await deliveryLogCollection.findOne({
@@ -1452,6 +1455,15 @@ const deliveryCtrl = () => {
       const quality = await qualityCollection.findOne({
         _id: new ObjectId(delivery.quality),
       });
+      const color = await colorsCollection.findOne({
+        _id: new ObjectId(delivery.color),
+      });
+      const residue = await residuesCollection.findOne({
+        _id: new ObjectId(delivery.residue),
+      });
+      const condition = await conditionsCollection.findOne({
+        _id: new ObjectId(delivery.condition),
+      });
 
       // Replace the fields in the delivery object
       const updatedDelivery = {
@@ -1459,6 +1471,9 @@ const deliveryCtrl = () => {
         material: material ? material.materialName : null,
         packaging: packaging ? packaging.name : null,
         quality: quality ? quality.name : null,
+        color: color ? color.colorName : null,
+        residue: residue ? residue.residueName : null,
+        condition: condition ? condition.conditionName : null,
       };
 
       return {

@@ -10,13 +10,19 @@ const { getUserIdFromToken } = require("../../config/common");
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/images/delivery/"); // Make sure the "uploads" folder exists
+    const uploadDir =
+      file.fieldname === "sds" ? "uploads/sds" : "uploads/images/delivery";
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Generate a unique filename
+    cb(null, Date.now() + path.extname(file.originalname));
   },
 });
 const upload = multer({ storage: storage });
+const uploadFields = upload.fields([
+  { name: "image", maxCount: 1 },
+  { name: "sds", maxCount: 1 },
+]);
 // Delivery Management
 delivery.post("/admin/set-read-delivery", async (req, res) => {
   try {
@@ -25,69 +31,67 @@ delivery.post("/admin/set-read-delivery", async (req, res) => {
     res.status(500).json({ success: false, message: `API error ${e.message}` });
   }
 });
-delivery.post(
-  "/user/add-delivery",
-  upload.single("image"),
-  async (req, res) => {
-    try {
-      // Ensure the upload directory exists
-      const uploadDir = path.resolve(__dirname, "../uploads/images/delivery");
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      // Extract fields from the request body
-      const {
-        material,
-        weight,
-        packaging,
-        countpackage,
-        color,
-        residue,
-        condition,
-        date,
-        time,
-        uploadstatus,
-        imageurl,
-      } = req.body;
-
-      const userId = getUserIdFromToken(req.headers["x-auth-token"]);
-      // Determine avatarPath based on `uploadstatus`
-      let avatarPath = imageurl;
-      if (uploadstatus === "true") {
-        // If uploadstatus is true, ensure file was uploaded
-        if (!req.file) {
-          return res
-            .status(400)
-            .json({ success: false, message: "File upload failed" });
-        }
-        avatarPath = req.file.path; // Use the uploaded file's path
-      }
-
-      // Call the controller to add the delivery
-      const result = await deliveryCtrl.addDelivery(
-        userId,
-        material,
-        weight,
-        packaging,
-        countpackage,
-        color,
-        residue,
-        condition,
-        date,
-        time,
-        avatarPath
-      );
-
-      // Respond with the result
-      res.send(result);
-    } catch (e) {
-      res
-        .status(500)
-        .json({ success: false, message: `API error ${e.message}` });
+delivery.post("/user/add-delivery", uploadFields, async (req, res) => {
+  try {
+    const imageUploadDir = path.resolve(__dirname, "../uploads/images/users");
+    const sdsUploadDir = path.resolve(__dirname, "../uploads/sds");
+    if (!fs.existsSync(imageUploadDir)) {
+      fs.mkdirSync(imageUploadDir, { recursive: true });
     }
+    if (!fs.existsSync(sdsUploadDir)) {
+      fs.mkdirSync(sdsUploadDir, { recursive: true });
+    }
+
+    // Extract fields from the request body
+    const {
+      material,
+      weight,
+      packaging,
+      countpackage,
+      color,
+      residue,
+      condition,
+      date,
+      time,
+      uploadstatus,
+      imageurl,
+      sdsUrl,
+      uploadSDSStatus,
+    } = req.body;
+
+    const userId = getUserIdFromToken(req.headers["x-auth-token"]);
+    // Determine avatarPath based on `uploadstatus`
+    let avatarPath = imageurl;
+    if (uploadstatus === "true") {
+      avatarPath = req.files.image ? req.files.image[0].path : null;
+    }
+    let sdsPath = sdsUrl;
+    if (uploadSDSStatus === "true") {
+      sdsPath = req.files.sds ? req.files.sds[0].path : null;
+    }
+
+    // Call the controller to add the delivery
+    const result = await deliveryCtrl.addDelivery(
+      userId,
+      material,
+      weight,
+      packaging,
+      countpackage,
+      color,
+      residue,
+      condition,
+      date,
+      time,
+      avatarPath,
+      sdsPath
+    );
+
+    // Respond with the result
+    res.send(result);
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
   }
-);
+});
 delivery.get("/user/lastest-delivery", async (req, res) => {
   try {
     res.send(await deliveryCtrl.getLastestDelivery());

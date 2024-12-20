@@ -1,7 +1,11 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Double } = require("bson");
-const { getUserCollection, getAdminCollection } = require("../helpers/db-conn");
+const {
+  getUserCollection,
+  getAdminCollection,
+  getIndustryCollection,
+} = require("../helpers/db-conn");
 
 const AuthCtrl = () => {
   const checkExist = async (email) => {
@@ -52,7 +56,10 @@ const AuthCtrl = () => {
     city,
     state,
     zipcode,
-    avatarPath
+    phonenumber,
+    industry,
+    avatarPath,
+    w9Path
   ) => {
     if (await checkExist(email)) {
       return { success: false, message: "User already exists" };
@@ -70,7 +77,10 @@ const AuthCtrl = () => {
       state,
       zipcode,
       password: hashedPassword,
+      phonenumber,
+      industry,
       avatarPath,
+      w9Path,
       loyalty: 0,
       trust: 0,
       totalweight: new Double(0.0),
@@ -110,11 +120,28 @@ const AuthCtrl = () => {
     }
   };
 
+  // Industry Management
+  const getAllIndustry = async () => {
+    try {
+      const collection = getIndustryCollection();
+      const industry = await collection.find().toArray();
+
+      return {
+        success: true,
+        message: "Success!",
+        data: industry,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+
   return {
     login,
     register,
     adminLogin,
     checkExist,
+    getAllIndustry,
   };
 };
 

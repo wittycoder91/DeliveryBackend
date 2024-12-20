@@ -10,13 +10,20 @@ const { getUserIdFromToken } = require("../../config/common");
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/images/users/"); // Make sure the "uploads" folder exists
+    const uploadDir =
+      file.fieldname === "w9" ? "uploads/w9" : "uploads/images/users";
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Generate a unique filename
+    cb(null, Date.now() + path.extname(file.originalname));
   },
 });
 const upload = multer({ storage: storage });
+// Define the upload fields
+const uploadFields = upload.fields([
+  { name: "image", maxCount: 1 },
+  { name: "w9", maxCount: 1 },
+]);
 
 // User Management
 setting.get("/admin/get-allusers", async (req, res) => {
@@ -37,13 +44,17 @@ setting.get("/user/get-user-information", async (req, res) => {
 });
 setting.post(
   "/user/update-user-information",
-  upload.single("image"),
+  uploadFields,
   async (req, res) => {
     try {
       // Ensure the upload directory exists
-      const uploadDir = path.resolve(__dirname, "../uploads/images/users");
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+      const imageUploadDir = path.resolve(__dirname, "../uploads/images/users");
+      const w9UploadDir = path.resolve(__dirname, "../uploads/w9");
+      if (!fs.existsSync(imageUploadDir)) {
+        fs.mkdirSync(imageUploadDir, { recursive: true });
+      }
+      if (!fs.existsSync(w9UploadDir)) {
+        fs.mkdirSync(w9UploadDir, { recursive: true });
       }
 
       // Extract fields from the request body
@@ -58,19 +69,32 @@ setting.post(
         zipcode,
         imageurl,
         uploadstatus,
+        phonenumber,
+        industry,
+        w9url,
+        uploadW9Status,
       } = req.body;
 
       const userId = getUserIdFromToken(req.headers["x-auth-token"]);
       // Determine avatarPath based on `uploadstatus`
       let avatarPath = imageurl;
       if (uploadstatus === "true") {
-        // If uploadstatus is true, ensure file was uploaded
-        if (!req.file) {
+        if (!req.files) {
           return res
             .status(400)
             .json({ success: false, message: "File upload failed" });
         }
-        avatarPath = req.file.path; // Use the uploaded file's path
+        avatarPath = req.files.image ? req.files.image[0].path : null;
+      }
+      // Determine w9Path based on `uploadstatus`
+      let w9Path = w9url;
+      if (uploadW9Status === "true") {
+        if (!req.files) {
+          return res
+            .status(400)
+            .json({ success: false, message: "File W9 upload failed" });
+        }
+        w9Path = req.files.w9 ? req.files.w9[0].path : null;
       }
 
       // Call the controller to add the delivery
@@ -84,7 +108,10 @@ setting.post(
         city,
         state,
         zipcode,
-        avatarPath
+        avatarPath,
+        phonenumber,
+        industry,
+        w9Path
       );
 
       // Respond with the result
@@ -164,6 +191,204 @@ setting.post("/admin/remove-material", async (req, res) => {
   }
 });
 
+setting.get("/admin/get-industry", async (req, res) => {
+  try {
+    const { curSearh, itemsPerPage, currentPage } = req.query;
+
+    res.send(
+      await settingCtrl.getIndustry(curSearh, itemsPerPage, currentPage)
+    );
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/add-industry", async (req, res) => {
+  try {
+    const { industryName, industryDesc, note } = req.body;
+
+    res.send(await settingCtrl.addIndustry(industryName, industryDesc, note));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/edit-industry", async (req, res) => {
+  try {
+    const { selID, industryName, industryDesc, note } = req.body;
+
+    res.send(
+      await settingCtrl.editIndustry(selID, industryName, industryDesc, note)
+    );
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/remove-industry", async (req, res) => {
+  try {
+    const { selID } = req.body;
+
+    res.send(await settingCtrl.delIndustry(selID));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+
+// Color Management
+setting.get("/admin/get-allcolors", async (req, res) => {
+  try {
+    res.send(await settingCtrl.getAllColor());
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.get("/admin/get-color", async (req, res) => {
+  try {
+    const { curSearh, itemsPerPage, currentPage } = req.query;
+
+    res.send(await settingCtrl.getColor(curSearh, itemsPerPage, currentPage));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/add-color", async (req, res) => {
+  try {
+    const { colorName, colorDesc, note } = req.body;
+
+    res.send(await settingCtrl.addColor(colorName, colorDesc, note));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/edit-color", async (req, res) => {
+  try {
+    const { selID, colorName, colorDesc, note } = req.body;
+
+    res.send(await settingCtrl.editColor(selID, colorName, colorDesc, note));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/remove-color", async (req, res) => {
+  try {
+    const { selID } = req.body;
+
+    res.send(await settingCtrl.delColor(selID));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+
+// Residue Material Management
+setting.get("/admin/get-all-residue-materials", async (req, res) => {
+  try {
+    res.send(await settingCtrl.getAllResidueMaterials());
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.get("/admin/get-residue-material", async (req, res) => {
+  try {
+    const { curSearh, itemsPerPage, currentPage } = req.query;
+
+    res.send(
+      await settingCtrl.getResidueMaterials(curSearh, itemsPerPage, currentPage)
+    );
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/add-residue-material", async (req, res) => {
+  try {
+    const { residueName, residueDesc, note } = req.body;
+
+    res.send(
+      await settingCtrl.addResidueMaterials(residueName, residueDesc, note)
+    );
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/edit-residue-material", async (req, res) => {
+  try {
+    const { selID, residueName, residueDesc, note } = req.body;
+
+    res.send(
+      await settingCtrl.editResidueMaterials(
+        selID,
+        residueName,
+        residueDesc,
+        note
+      )
+    );
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/remove-residue-material", async (req, res) => {
+  try {
+    const { selID } = req.body;
+
+    res.send(await settingCtrl.delResidueMaterials(selID));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+
+// Conditions Management
+setting.get("/admin/get-all-conditions", async (req, res) => {
+  try {
+    res.send(await settingCtrl.getAllConditions());
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.get("/admin/get-condition", async (req, res) => {
+  try {
+    const { curSearh, itemsPerPage, currentPage } = req.query;
+
+    res.send(
+      await settingCtrl.getConditions(curSearh, itemsPerPage, currentPage)
+    );
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/add-condition", async (req, res) => {
+  try {
+    const { conditionName, conditionDesc, note } = req.body;
+
+    res.send(
+      await settingCtrl.addConditions(conditionName, conditionDesc, note)
+    );
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/edit-condition", async (req, res) => {
+  try {
+    const { selID, conditionName, conditionDesc, note } = req.body;
+
+    res.send(
+      await settingCtrl.editConditions(
+        selID,
+        conditionName,
+        conditionDesc,
+        note
+      )
+    );
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/remove-condition", async (req, res) => {
+  try {
+    const { selID } = req.body;
+
+    res.send(await settingCtrl.delConditions(selID));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+
 // Setting Management
 setting.get("/admin/get-setting", async (req, res) => {
   try {
@@ -187,6 +412,8 @@ setting.post("/admin/update-setting", async (req, res) => {
       curState,
       curZipcode,
       curTel,
+      curPrivacy,
+      curReport,
     } = req.body;
 
     res.send(
@@ -202,7 +429,9 @@ setting.post("/admin/update-setting", async (req, res) => {
         curCity,
         curState,
         curZipcode,
-        curTel
+        curTel,
+        curPrivacy,
+        curReport
       )
     );
   } catch (e) {

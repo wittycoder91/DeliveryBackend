@@ -3,7 +3,11 @@ const { ObjectId } = require("mongodb");
 const {
   getUserCollection,
   getMaterialCollection,
+  getIndustryCollection,
   getSettingCollection,
+  getColorCollection,
+  getResidueCollection,
+  getConditionCollection,
   getPackageCollection,
   getQualityCollection,
 } = require("../helpers/db-conn");
@@ -57,7 +61,10 @@ const settingCtrl = () => {
     city,
     state,
     zipcode,
-    avatarPath
+    avatarPath,
+    phonenumber,
+    industry,
+    w9Path
   ) => {
     const collectionUser = getUserCollection();
 
@@ -87,6 +94,9 @@ const settingCtrl = () => {
         state: state,
         zipcode: zipcode,
         avatarPath: avatarPath,
+        phonenumber,
+        industry,
+        w9Path,
       };
 
       // Update the document and return the updated data
@@ -278,6 +288,539 @@ const settingCtrl = () => {
     }
   };
 
+  // Industry Management
+  const getIndustry = async (curSearh, itemsPerPage, currentPage) => {
+    try {
+      const collection = getIndustryCollection();
+
+      const limit = parseInt(itemsPerPage, 10);
+      const page = parseInt(currentPage, 10);
+      const skip = (page - 1) * limit;
+
+      const query = curSearh
+        ? { industryName: { $regex: curSearh, $options: "i" } }
+        : {};
+
+      const industry = await collection
+        .find(query)
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      const totalItems = await collection.countDocuments(query);
+
+      return {
+        success: true,
+        message: "Success!",
+        totalCount: totalItems,
+        data: industry,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const addIndustry = async (industryName, industryDesc, note) => {
+    try {
+      const collection = getIndustryCollection();
+      const result = await collection
+        .find({ industryName: industryName })
+        .toArray();
+
+      if (result.length > 0) {
+        return {
+          success: false,
+          message: "This industry is exist.",
+        };
+      } else {
+        await collection.insertOne({
+          industryName: industryName,
+          industryDesc: industryDesc,
+          note: note,
+        });
+
+        return {
+          success: true,
+          message: "The Data has been added successfully.",
+        };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const editIndustry = async (selID, industryName, industryDesc, note) => {
+    try {
+      const collection = getIndustryCollection();
+
+      // Check if the industry with the given ID exists
+      const selData = await collection.findOne({ _id: new ObjectId(selID) });
+
+      if (!selData) {
+        return {
+          success: false,
+          message: "Industry with the given ID does not exist.",
+        };
+      }
+
+      // Check if another industry with the same name exists
+      const result = await collection.findOne({
+        industryName: industryName,
+        _id: { $ne: new ObjectId(selID) },
+      });
+
+      if (result) {
+        return {
+          success: false,
+          message: "This industry name already exists.",
+        };
+      }
+
+      // Update the industry details
+      await collection.updateOne(
+        { _id: new ObjectId(selID) },
+        {
+          $set: {
+            industryName: industryName,
+            industryDesc: industryDesc,
+            note: note,
+          },
+        }
+      );
+
+      return {
+        success: true,
+        message: "The data has been updated successfully.",
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const delIndustry = async (selId) => {
+    try {
+      const collection = getIndustryCollection();
+      const result = await collection.deleteOne({
+        _id: new ObjectId(selId),
+      });
+
+      if (result) {
+        return { success: true, message: "Removed data Successfully" };
+      } else {
+        return { success: false, message: "MongDB API Error" };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+
+  // Color Management
+  const getAllColor = async () => {
+    try {
+      const collection = getColorCollection();
+      const color = await collection.find().toArray();
+
+      return {
+        success: true,
+        message: "Success!",
+        data: color,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const getColor = async (curSearh, itemsPerPage, currentPage) => {
+    try {
+      const collection = getColorCollection();
+
+      const limit = parseInt(itemsPerPage, 10);
+      const page = parseInt(currentPage, 10);
+      const skip = (page - 1) * limit;
+
+      const query = curSearh
+        ? { colorName: { $regex: curSearh, $options: "i" } }
+        : {};
+
+      const color = await collection
+        .find(query)
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      const totalItems = await collection.countDocuments(query);
+
+      return {
+        success: true,
+        message: "Success!",
+        totalCount: totalItems,
+        data: color,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const addColor = async (colorName, colorDesc, note) => {
+    try {
+      const collection = getColorCollection();
+      const result = await collection.find({ colorName: colorName }).toArray();
+
+      if (result.length > 0) {
+        return {
+          success: false,
+          message: "This color is exist.",
+        };
+      } else {
+        await collection.insertOne({
+          colorName: colorName,
+          colorDesc: colorDesc,
+          note: note,
+        });
+
+        return {
+          success: true,
+          message: "The Data has been added successfully.",
+        };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const editColor = async (selID, colorName, colorDesc, note) => {
+    try {
+      const collection = getColorCollection();
+
+      // Check if the color with the given ID exists
+      const selData = await collection.findOne({ _id: new ObjectId(selID) });
+
+      if (!selData) {
+        return {
+          success: false,
+          message: "Color with the given ID does not exist.",
+        };
+      }
+
+      // Check if another color with the same name exists
+      const result = await collection.findOne({
+        colorName: colorName,
+        _id: { $ne: new ObjectId(selID) },
+      });
+
+      if (result) {
+        return {
+          success: false,
+          message: "This color name already exists.",
+        };
+      }
+
+      // Update the color details
+      await collection.updateOne(
+        { _id: new ObjectId(selID) },
+        {
+          $set: {
+            colorName: colorName,
+            colorDesc: colorDesc,
+            note: note,
+          },
+        }
+      );
+
+      return {
+        success: true,
+        message: "The data has been updated successfully.",
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const delColor = async (selId) => {
+    try {
+      const collection = getColorCollection();
+      const result = await collection.deleteOne({
+        _id: new ObjectId(selId),
+      });
+
+      if (result) {
+        return { success: true, message: "Removed data Successfully" };
+      } else {
+        return { success: false, message: "MongDB API Error" };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+
+  // Residue Materials Management
+  const getAllResidueMaterials = async () => {
+    try {
+      const collection = getResidueCollection();
+      const residues = await collection.find().toArray();
+
+      return {
+        success: true,
+        message: "Success!",
+        data: residues,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const getResidueMaterials = async (curSearh, itemsPerPage, currentPage) => {
+    try {
+      const collection = getResidueCollection();
+
+      const limit = parseInt(itemsPerPage, 10);
+      const page = parseInt(currentPage, 10);
+      const skip = (page - 1) * limit;
+
+      const query = curSearh
+        ? { residueName: { $regex: curSearh, $options: "i" } }
+        : {};
+
+      const residue = await collection
+        .find(query)
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      const totalItems = await collection.countDocuments(query);
+
+      return {
+        success: true,
+        message: "Success!",
+        totalCount: totalItems,
+        data: residue,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const addResidueMaterials = async (residueName, residueDesc, note) => {
+    try {
+      const collection = getResidueCollection();
+      const result = await collection
+        .find({ residueName: residueName })
+        .toArray();
+
+      if (result.length > 0) {
+        return {
+          success: false,
+          message: "This Residue Material is exist.",
+        };
+      } else {
+        await collection.insertOne({
+          residueName: residueName,
+          residueDesc: residueDesc,
+          note: note,
+        });
+
+        return {
+          success: true,
+          message: "The Data has been added successfully.",
+        };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const editResidueMaterials = async (
+    selID,
+    residueName,
+    residueDesc,
+    note
+  ) => {
+    try {
+      const collection = getResidueCollection();
+
+      // Check if the residue with the given ID exists
+      const selData = await collection.findOne({ _id: new ObjectId(selID) });
+
+      if (!selData) {
+        return {
+          success: false,
+          message: "Residue Material with the given ID does not exist.",
+        };
+      }
+
+      // Check if another residue with the same name exists
+      const result = await collection.findOne({
+        residueName: residueName,
+        _id: { $ne: new ObjectId(selID) },
+      });
+
+      if (result) {
+        return {
+          success: false,
+          message: "This Residue Material name already exists.",
+        };
+      }
+
+      // Update the residue details
+      await collection.updateOne(
+        { _id: new ObjectId(selID) },
+        {
+          $set: {
+            residueName: residueName,
+            residueDesc: residueDesc,
+            note: note,
+          },
+        }
+      );
+
+      return {
+        success: true,
+        message: "The data has been updated successfully.",
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const delResidueMaterials = async (selId) => {
+    try {
+      const collection = getResidueCollection();
+      const result = await collection.deleteOne({
+        _id: new ObjectId(selId),
+      });
+
+      if (result) {
+        return { success: true, message: "Removed data Successfully" };
+      } else {
+        return { success: false, message: "MongDB API Error" };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+
+  // Conditions Management
+  const getAllConditions = async () => {
+    try {
+      const collection = getConditionCollection();
+      const conditions = await collection.find().toArray();
+
+      return {
+        success: true,
+        message: "Success!",
+        data: conditions,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const getConditions = async (curSearh, itemsPerPage, currentPage) => {
+    try {
+      const collection = getConditionCollection();
+
+      const limit = parseInt(itemsPerPage, 10);
+      const page = parseInt(currentPage, 10);
+      const skip = (page - 1) * limit;
+
+      const query = curSearh
+        ? { conditionName: { $regex: curSearh, $options: "i" } }
+        : {};
+
+      const condition = await collection
+        .find(query)
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      const totalItems = await collection.countDocuments(query);
+
+      return {
+        success: true,
+        message: "Success!",
+        totalCount: totalItems,
+        data: condition,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const addConditions = async (conditionName, conditionDesc, note) => {
+    try {
+      const collection = getConditionCollection();
+      const result = await collection
+        .find({ conditionName: conditionName })
+        .toArray();
+
+      if (result.length > 0) {
+        return {
+          success: false,
+          message: "This Condition is exist.",
+        };
+      } else {
+        await collection.insertOne({
+          conditionName: conditionName,
+          conditionDesc: conditionDesc,
+          note: note,
+        });
+
+        return {
+          success: true,
+          message: "The Data has been added successfully.",
+        };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const editConditions = async (selID, conditionName, conditionDesc, note) => {
+    try {
+      const collection = getConditionCollection();
+
+      // Check if the condition with the given ID exists
+      const selData = await collection.findOne({ _id: new ObjectId(selID) });
+
+      if (!selData) {
+        return {
+          success: false,
+          message: "Condition with the given ID does not exist.",
+        };
+      }
+
+      // Check if another condition with the same name exists
+      const result = await collection.findOne({
+        conditionName: conditionName,
+        _id: { $ne: new ObjectId(selID) },
+      });
+
+      if (result) {
+        return {
+          success: false,
+          message: "This Condition name already exists.",
+        };
+      }
+
+      // Update the condition details
+      await collection.updateOne(
+        { _id: new ObjectId(selID) },
+        {
+          $set: {
+            conditionName: conditionName,
+            conditionDesc: conditionDesc,
+            note: note,
+          },
+        }
+      );
+
+      return {
+        success: true,
+        message: "The data has been updated successfully.",
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const delConditions = async (selId) => {
+    try {
+      const collection = getConditionCollection();
+      const result = await collection.deleteOne({
+        _id: new ObjectId(selId),
+      });
+
+      if (result) {
+        return { success: true, message: "Removed data Successfully" };
+      } else {
+        return { success: false, message: "MongDB API Error" };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+
   // Setting Management
   const getSettings = async () => {
     try {
@@ -313,7 +856,9 @@ const settingCtrl = () => {
     curCity,
     curState,
     curZipcode,
-    curTel
+    curTel,
+    curPrivacy,
+    curReport
   ) => {
     try {
       const collection = getSettingCollection();
@@ -334,6 +879,8 @@ const settingCtrl = () => {
             state: curState,
             zipcode: curZipcode,
             telephone: curTel,
+            terms: curPrivacy,
+            report: curReport,
           },
         }
       );
@@ -356,18 +903,14 @@ const settingCtrl = () => {
       const page = parseInt(currentPage, 10);
       const skip = (page - 1) * limit;
 
-      const materials = await collection
-        .find()
-        .skip(skip)
-        .limit(limit)
-        .toArray();
+      const faqs = await collection.find().skip(skip).limit(limit).toArray();
       const totalItems = await collection.countDocuments();
 
       return {
         success: true,
         message: "Success!",
         totalCount: totalItems,
-        data: materials,
+        data: faqs,
       };
     } catch (e) {
       return { success: false, message: e.message };
@@ -394,17 +937,17 @@ const settingCtrl = () => {
     try {
       const collection = getFAQCollection();
 
-      // Check if the material with the given ID exists
+      // Check if the faq with the given ID exists
       const selData = await collection.findOne({ _id: new ObjectId(selID) });
 
       if (!selData) {
         return {
           success: false,
-          message: "Material with the given ID does not exist.",
+          message: "FAQ with the given ID does not exist.",
         };
       }
 
-      // Update the material details
+      // Update the faq details
       await collection.updateOne(
         { _id: new ObjectId(selID) },
         {
@@ -535,6 +1078,25 @@ const settingCtrl = () => {
     addMaterial,
     editMaterial,
     delMaterial,
+    getIndustry,
+    addIndustry,
+    editIndustry,
+    delIndustry,
+    getAllResidueMaterials,
+    getResidueMaterials,
+    addResidueMaterials,
+    editResidueMaterials,
+    delResidueMaterials,
+    getAllConditions,
+    getConditions,
+    addConditions,
+    editConditions,
+    delConditions,
+    getAllColor,
+    getColor,
+    addColor,
+    editColor,
+    delColor,
     getSettings,
     updateSetting,
     getFAQs,

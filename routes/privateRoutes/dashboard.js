@@ -50,14 +50,16 @@ dashboard.get("/admin/get-dashboard-widget", async (req, res) => {
 });
 dashboard.get("/admin/get-dashboard-delivery", async (req, res) => {
   try {
-    res.send(await dashboardCtrl.getAdminDashboardDelivery());
+    const { view } = req.query;
+    res.send(await dashboardCtrl.getAdminDashboardDelivery(view));
   } catch (e) {
     res.status(500).json({ success: false, message: `API error ${e.message}` });
   }
 });
 dashboard.get("/admin/get-dashboard-weight", async (req, res) => {
   try {
-    res.send(await dashboardCtrl.getAdminDashboardWeight());
+    const { view } = req.query;
+    res.send(await dashboardCtrl.getAdminDashboardWeight(view));
   } catch (e) {
     res.status(500).json({ success: false, message: `API error ${e.message}` });
   }

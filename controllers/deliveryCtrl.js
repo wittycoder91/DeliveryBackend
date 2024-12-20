@@ -8,6 +8,9 @@ const {
   getQualityCollection,
   getDeliveryLogsCollection,
   getSettingCollection,
+  getDeliveryColorsCollection,
+  getDeliveryResiduesCollection,
+  getDeliveryConditionsCollection,
 } = require("../helpers/db-conn");
 
 const deliveryCtrl = () => {
@@ -41,7 +44,8 @@ const deliveryCtrl = () => {
     condition,
     date,
     time,
-    avatarPath
+    avatarPath,
+    sdsPath
   ) => {
     const collection = getDeliveryCollection();
     const collectionLogs = getDeliveryLogsCollection();
@@ -98,6 +102,7 @@ const deliveryCtrl = () => {
       date,
       time: parseInt(time, 10),
       avatarPath,
+      sdsPath,
       read: false,
     });
 
@@ -246,6 +251,9 @@ const deliveryCtrl = () => {
               userSelId: { $toObjectId: "$userId" },
               materialId: { $toObjectId: "$material" },
               packageId: { $toObjectId: "$packaging" },
+              colorId: { $toObjectId: "$color" },
+              residueId: { $toObjectId: "$residue" },
+              conditionId: { $toObjectId: "$condition" },
             },
           },
           {
@@ -273,6 +281,30 @@ const deliveryCtrl = () => {
             },
           },
           {
+            $lookup: {
+              from: "colors", // Join with colors collection
+              localField: "colorId",
+              foreignField: "_id",
+              as: "colorDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "residues", // Join with residues collection
+              localField: "residueId",
+              foreignField: "_id",
+              as: "residueDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "conditions", // Join with conditions collection
+              localField: "conditionId",
+              foreignField: "_id",
+              as: "conditionDetails",
+            },
+          },
+          {
             $addFields: {
               userName: { $arrayElemAt: ["$userDetails.name", 0] },
               materialName: {
@@ -281,6 +313,15 @@ const deliveryCtrl = () => {
               packageName: {
                 $arrayElemAt: ["$packageDetails.name", 0],
               },
+              colorName: {
+                $arrayElemAt: ["$colorDetails.colorName", 0],
+              },
+              residueName: {
+                $arrayElemAt: ["$residueDetails.residueName", 0],
+              },
+              conditionName: {
+                $arrayElemAt: ["$conditionDetails.conditionName", 0],
+              },
             },
           },
           {
@@ -288,9 +329,15 @@ const deliveryCtrl = () => {
               "userDetails",
               "materialDetails",
               "packageDetails",
+              "colorDetails",
+              "residueDetails",
+              "conditionDetails",
               "userSelId",
               "materialId",
               "packageId",
+              "colorId",
+              "residueId",
+              "conditionId",
             ],
           },
           {
@@ -327,6 +374,9 @@ const deliveryCtrl = () => {
       const usersCollection = getUserCollection();
       const materialsCollection = getMaterialCollection();
       const packagesCollection = getPackageCollection();
+      const colorsCollection = getDeliveryColorsCollection();
+      const residuesCollection = getDeliveryResiduesCollection();
+      const conditionsCollection = getDeliveryConditionsCollection();
 
       // Find the selected delivery by ID
       const delivery = await deliveryCollection.findOne({
@@ -346,6 +396,15 @@ const deliveryCtrl = () => {
       const packaging = await packagesCollection.findOne({
         _id: new ObjectId(delivery.packaging),
       });
+      const color = await colorsCollection.findOne({
+        _id: new ObjectId(delivery.color),
+      });
+      const residue = await residuesCollection.findOne({
+        _id: new ObjectId(delivery.residue),
+      });
+      const condition = await conditionsCollection.findOne({
+        _id: new ObjectId(delivery.condition),
+      });
 
       // Replace the fields in the delivery object
       const updatedDelivery = {
@@ -353,6 +412,9 @@ const deliveryCtrl = () => {
         username: user ? user.name : null,
         material: material ? material.materialName : null,
         packaging: packaging ? packaging.name : null,
+        color: color ? color.colorName : null,
+        residue: residue ? residue.residueName : null,
+        condition: condition ? condition.conditionName : null,
       };
 
       return {
@@ -760,6 +822,9 @@ const deliveryCtrl = () => {
               materialId: { $toObjectId: "$material" },
               packageId: { $toObjectId: "$packaging" },
               qualityId: { $toObjectId: "$quality" },
+              colorId: { $toObjectId: "$color" },
+              residueId: { $toObjectId: "$residue" },
+              conditionId: { $toObjectId: "$condition" },
             },
           },
           {
@@ -795,6 +860,30 @@ const deliveryCtrl = () => {
             },
           },
           {
+            $lookup: {
+              from: "colors", // Join with colors collection
+              localField: "colorId",
+              foreignField: "_id",
+              as: "colorDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "residues", // Join with residues collection
+              localField: "residueId",
+              foreignField: "_id",
+              as: "residueDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "conditions", // Join with conditions collection
+              localField: "conditionId",
+              foreignField: "_id",
+              as: "conditionDetails",
+            },
+          },
+          {
             $addFields: {
               userName: { $arrayElemAt: ["$userDetails.name", 0] },
               materialName: {
@@ -806,6 +895,15 @@ const deliveryCtrl = () => {
               qualityName: {
                 $arrayElemAt: ["$qualityDetails.name", 0],
               },
+              colorName: {
+                $arrayElemAt: ["$colorDetails.colorName", 0],
+              },
+              residueName: {
+                $arrayElemAt: ["$residueDetails.residueName", 0],
+              },
+              conditionName: {
+                $arrayElemAt: ["$conditionDetails.conditionName", 0],
+              },
             },
           },
           {
@@ -814,10 +912,16 @@ const deliveryCtrl = () => {
               "materialDetails",
               "packageDetails",
               "qualityDetails",
+              "colorDetails",
+              "residueDetails",
+              "conditionDetails",
               "userSelId",
               "materialId",
               "packageId",
               "qualityId",
+              "colorId",
+              "residueId",
+              "conditionId",
             ],
           },
           {
@@ -855,6 +959,9 @@ const deliveryCtrl = () => {
       const materialsCollection = getMaterialCollection();
       const qualityCollection = getQualityCollection();
       const packagesCollection = getPackageCollection();
+      const colorsCollection = getDeliveryColorsCollection();
+      const residuesCollection = getDeliveryResiduesCollection();
+      const conditionsCollection = getDeliveryConditionsCollection();
 
       // Find the selected delivery by ID
       const delivery = await deliveryLogCollection.findOne({
@@ -877,6 +984,15 @@ const deliveryCtrl = () => {
       const quality = await qualityCollection.findOne({
         _id: new ObjectId(delivery.quality),
       });
+      const color = await colorsCollection.findOne({
+        _id: new ObjectId(delivery.color),
+      });
+      const residue = await residuesCollection.findOne({
+        _id: new ObjectId(delivery.residue),
+      });
+      const condition = await conditionsCollection.findOne({
+        _id: new ObjectId(delivery.condition),
+      });
 
       // Replace the fields in the delivery object
       const updatedDelivery = {
@@ -885,6 +1001,9 @@ const deliveryCtrl = () => {
         material: material ? material.materialName : null,
         packaging: packaging ? packaging.name : null,
         quality: quality ? quality.name : null,
+        color: color ? color.colorName : null,
+        residue: residue ? residue.residueName : null,
+        condition: condition ? condition.conditionName : null,
       };
 
       return {
@@ -951,6 +1070,9 @@ const deliveryCtrl = () => {
             $addFields: {
               materialId: { $toObjectId: "$material" },
               packageId: { $toObjectId: "$packaging" },
+              colorId: { $toObjectId: "$color" },
+              residueId: { $toObjectId: "$residue" },
+              conditionId: { $toObjectId: "$condition" },
             },
           },
           {
@@ -970,6 +1092,30 @@ const deliveryCtrl = () => {
             },
           },
           {
+            $lookup: {
+              from: "colors", // Join with colors collection
+              localField: "colorId",
+              foreignField: "_id",
+              as: "colorDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "residues", // Join with residues collection
+              localField: "residueId",
+              foreignField: "_id",
+              as: "residueDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "conditions", // Join with conditions collection
+              localField: "conditionId",
+              foreignField: "_id",
+              as: "conditionDetails",
+            },
+          },
+          {
             $addFields: {
               materialName: {
                 $arrayElemAt: ["$materialDetails.materialName", 0],
@@ -977,14 +1123,29 @@ const deliveryCtrl = () => {
               packageName: {
                 $arrayElemAt: ["$packageDetails.name", 0],
               },
+              colorName: {
+                $arrayElemAt: ["$colorDetails.colorName", 0],
+              },
+              residueName: {
+                $arrayElemAt: ["$residueDetails.residueName", 0],
+              },
+              conditionName: {
+                $arrayElemAt: ["$conditionDetails.conditionName", 0],
+              },
             },
           },
           {
             $unset: [
               "materialDetails",
               "packageDetails",
+              "colorDetails",
+              "residueDetails",
+              "conditionDetails",
               "materialId",
               "packageId",
+              "colorId",
+              "residueId",
+              "conditionId",
             ],
           },
           {
@@ -1145,6 +1306,9 @@ const deliveryCtrl = () => {
               materialId: { $toObjectId: "$material" },
               packageId: { $toObjectId: "$packaging" },
               qualityId: { $toObjectId: "$quality" },
+              colorId: { $toObjectId: "$color" },
+              residueId: { $toObjectId: "$residue" },
+              conditionId: { $toObjectId: "$condition" },
             },
           },
           {
@@ -1172,6 +1336,30 @@ const deliveryCtrl = () => {
             },
           },
           {
+            $lookup: {
+              from: "colors", // Join with colors collection
+              localField: "colorId",
+              foreignField: "_id",
+              as: "colorDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "residues", // Join with residues collection
+              localField: "residueId",
+              foreignField: "_id",
+              as: "residueDetails",
+            },
+          },
+          {
+            $lookup: {
+              from: "conditions", // Join with conditions collection
+              localField: "conditionId",
+              foreignField: "_id",
+              as: "conditionDetails",
+            },
+          },
+          {
             $addFields: {
               materialName: {
                 $arrayElemAt: ["$materialDetails.materialName", 0],
@@ -1182,6 +1370,15 @@ const deliveryCtrl = () => {
               qualityName: {
                 $arrayElemAt: ["$qualityDetails.name", 0],
               },
+              colorName: {
+                $arrayElemAt: ["$colorDetails.colorName", 0],
+              },
+              residueName: {
+                $arrayElemAt: ["$residueDetails.residueName", 0],
+              },
+              conditionName: {
+                $arrayElemAt: ["$conditionDetails.conditionName", 0],
+              },
             },
           },
           {
@@ -1190,10 +1387,16 @@ const deliveryCtrl = () => {
               "materialDetails",
               "packageDetails",
               "qualityDetails",
+              "colorDetails",
+              "residueDetails",
+              "conditionDetails",
               "userSelId",
               "materialId",
               "packageId",
               "qualityId",
+              "colorId",
+              "residueId",
+              "conditionId",
             ],
           },
           {

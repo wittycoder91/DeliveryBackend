@@ -264,98 +264,181 @@ const dashboardCtrl = () => {
       return { success: false, message: e.message };
     }
   };
-  const getAdminDashboardDelivery = async () => {
+  const getAdminDashboardDelivery = async (view = "year") => {
     try {
       const deliveryLogsCollection = getDeliveryLogsCollection();
-
       const currentYear = new Date().getFullYear();
-      const deliveriesByMonth = await deliveryLogsCollection
-        .aggregate([
-          {
-            $match: {
-              status: 3,
-              date: {
-                $gte: `${currentYear}-01-01`,
-                $lte: `${currentYear}-12-31`,
+      const currentMonth = new Date().getMonth() + 1;
+
+      const matchStage = {
+        $match: {
+          status: 3,
+          date: {
+            $gte: `${currentYear}-01-01`,
+            $lte: `${currentYear}-12-31`,
+          },
+        },
+      };
+
+      let groupStage = {};
+      let responseTemplate = [];
+
+      if (view === "year") {
+        // Group by month: January - December
+        groupStage = {
+          $group: {
+            _id: { $month: { $dateFromString: { dateString: "$date" } } },
+            count: { $sum: 1 },
+          },
+        };
+        responseTemplate = Array(12)
+          .fill(0)
+          .map((_, index) => ({
+            period: new Date(0, index).toLocaleString("default", {
+              month: "long",
+            }),
+            count: 0,
+          }));
+      } else if (view === "quarter") {
+        // Group by quarter: Q1, Q2, Q3, Q4
+        groupStage = {
+          $group: {
+            _id: {
+              $ceil: {
+                $divide: [
+                  { $month: { $dateFromString: { dateString: "$date" } } },
+                  3,
+                ],
               },
             },
+            count: { $sum: 1 },
           },
-          {
-            $group: {
-              _id: {
-                month: { $month: { $dateFromString: { dateString: "$date" } } },
-              },
-              count: { $sum: 1 }, // Count the documents for each month
-            },
+        };
+        responseTemplate = Array(4)
+          .fill(0)
+          .map((_, index) => ({ period: `Q${index + 1}`, count: 0 }));
+      } else if (view === "month") {
+        // Group by day: 1 - current month's last day
+        groupStage = {
+          $group: {
+            _id: { $dayOfMonth: { $dateFromString: { dateString: "$date" } } },
+            count: { $sum: 1 },
           },
-          {
-            $sort: { "_id.month": 1 }, // Sort by month
-          },
-        ])
+        };
+        const daysInCurrentMonth = new Date(
+          currentYear,
+          currentMonth,
+          0
+        ).getDate();
+        responseTemplate = Array(daysInCurrentMonth)
+          .fill(0)
+          .map((_, index) => ({
+            period: `Day ${index + 1}`,
+            count: 0,
+          }));
+      }
+
+      // Run the aggregation pipeline
+      const deliveries = await deliveryLogsCollection
+        .aggregate([matchStage, groupStage, { $sort: { _id: 1 } }])
         .toArray();
 
-      const response = Array(12)
-        .fill(0)
-        .map((_, index) => ({
-          month: new Date(0, index).toLocaleString("default", {
-            month: "long",
-          }),
-          count: 0,
-        }));
-
-      deliveriesByMonth.forEach((item) => {
-        response[item._id.month - 1].count = item.count;
+      // Map the results into the response template
+      deliveries.forEach((item) => {
+        responseTemplate[item._id - 1].count = item.count;
       });
 
-      return { success: true, data: response };
+      return { success: true, data: responseTemplate };
     } catch (e) {
       return { success: false, message: e.message };
     }
   };
-  const getAdminDashboardWeight = async () => {
+
+  const getAdminDashboardWeight = async (view) => {
     try {
       const deliveryLogsCollection = getDeliveryLogsCollection();
-
       const currentYear = new Date().getFullYear();
-      const deliveriesByMonth = await deliveryLogsCollection
-        .aggregate([
-          {
-            $match: {
-              status: 3,
-              date: {
-                $gte: `${currentYear}-01-01`,
-                $lte: `${currentYear}-12-31`,
+      const currentMonth = new Date().getMonth() + 1;
+
+      const matchStage = {
+        $match: {
+          status: 3,
+          date: {
+            $gte: `${currentYear}-01-01`,
+            $lte: `${currentYear}-12-31`,
+          },
+        },
+      };
+
+      let groupStage = {};
+      let responseTemplate = [];
+
+      if (view === "year") {
+        // Group by month: January - December
+        groupStage = {
+          $group: {
+            _id: { $month: { $dateFromString: { dateString: "$date" } } },
+            count: { $sum: "$weight" },
+          },
+        };
+        responseTemplate = Array(12)
+          .fill(0)
+          .map((_, index) => ({
+            period: new Date(0, index).toLocaleString("default", {
+              month: "long",
+            }),
+            count: 0,
+          }));
+      } else if (view === "quarter") {
+        // Group by quarter: Q1, Q2, Q3, Q4
+        groupStage = {
+          $group: {
+            _id: {
+              $ceil: {
+                $divide: [
+                  { $month: { $dateFromString: { dateString: "$date" } } },
+                  3,
+                ],
               },
             },
+            count: { $sum: "$weight" },
           },
-          {
-            $group: {
-              _id: {
-                month: { $month: { $dateFromString: { dateString: "$date" } } },
-              },
-              totalWeight: { $sum: "$weight" }, // Sum the weight for each month
-            },
+        };
+        responseTemplate = Array(4)
+          .fill(0)
+          .map((_, index) => ({ period: `Q${index + 1}`, count: 0 }));
+      } else if (view === "month") {
+        // Group by day: 1 - current month's last day
+        groupStage = {
+          $group: {
+            _id: { $dayOfMonth: { $dateFromString: { dateString: "$date" } } },
+            count: { $sum: "$weight" },
           },
-          {
-            $sort: { "_id.month": 1 }, // Sort by month
-          },
-        ])
+        };
+        const daysInCurrentMonth = new Date(
+          currentYear,
+          currentMonth,
+          0
+        ).getDate();
+        responseTemplate = Array(daysInCurrentMonth)
+          .fill(0)
+          .map((_, index) => ({
+            period: `Day ${index + 1}`,
+            count: 0,
+          }));
+      }
+
+      // Run the aggregation pipeline
+      const deliveries = await deliveryLogsCollection
+        .aggregate([matchStage, groupStage, { $sort: { _id: 1 } }])
         .toArray();
 
-      const response = Array(12)
-        .fill(0)
-        .map((_, index) => ({
-          month: new Date(0, index).toLocaleString("default", {
-            month: "long",
-          }),
-          totalWeight: 0,
-        }));
-
-      deliveriesByMonth.forEach((item) => {
-        response[item._id.month - 1].totalWeight = item.totalWeight;
+      // Map the results into the response template
+      deliveries.forEach((item) => {
+        responseTemplate[item._id - 1].count = item.count;
       });
 
-      return { success: true, data: response };
+      return { success: true, data: responseTemplate };
     } catch (e) {
       return { success: false, message: e.message };
     }

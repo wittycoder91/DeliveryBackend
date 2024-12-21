@@ -895,6 +895,20 @@ const settingCtrl = () => {
   };
 
   // FAQ Management
+  const getAllFAQs = async () => {
+    try {
+      const collection = getFAQCollection();
+      const data = await collection.find().toArray();
+
+      return {
+        success: true,
+        message: "Success!",
+        data: data,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
   const getFAQs = async (itemsPerPage, currentPage) => {
     try {
       const collection = getFAQCollection();
@@ -1099,6 +1113,7 @@ const settingCtrl = () => {
     delColor,
     getSettings,
     updateSetting,
+    getAllFAQs,
     getFAQs,
     addFAQ,
     editFAQ,

@@ -440,6 +440,13 @@ setting.post("/admin/update-setting", async (req, res) => {
 });
 
 // FAG Management
+setting.get("/admin/get-all-faq", async (req, res) => {
+  try {
+    res.send(await settingCtrl.getAllFAQs());
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
 setting.get("/admin/get-faq", async (req, res) => {
   try {
     const { itemsPerPage, currentPage } = req.query;

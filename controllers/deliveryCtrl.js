@@ -44,6 +44,7 @@ const deliveryCtrl = () => {
     condition,
     date,
     time,
+    other,
     avatarPath,
     sdsPath
   ) => {
@@ -101,6 +102,7 @@ const deliveryCtrl = () => {
       status: curStatus,
       date,
       time: parseInt(time, 10),
+      other,
       avatarPath,
       sdsPath,
       read: false,

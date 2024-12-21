@@ -57,6 +57,7 @@ delivery.post("/user/add-delivery", uploadFields, async (req, res) => {
       imageurl,
       sdsUrl,
       uploadSDSStatus,
+      other,
     } = req.body;
 
     const userId = getUserIdFromToken(req.headers["x-auth-token"]);
@@ -82,6 +83,7 @@ delivery.post("/user/add-delivery", uploadFields, async (req, res) => {
       condition,
       date,
       time,
+      other,
       avatarPath,
       sdsPath
     );

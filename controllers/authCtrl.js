@@ -50,6 +50,7 @@ const AuthCtrl = () => {
   };
   const register = async (
     name,
+    contact,
     email,
     password,
     address,
@@ -71,6 +72,7 @@ const AuthCtrl = () => {
     const collection = getUserCollection();
     const user = await collection.insertOne({
       name,
+      contact,
       email,
       address,
       city,

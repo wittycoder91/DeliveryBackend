@@ -46,6 +46,7 @@ auth.post("/user/register", uploadFields, async (req, res) => {
 
     const {
       name,
+      contact,
       email,
       password,
       address,
@@ -61,6 +62,7 @@ auth.post("/user/register", uploadFields, async (req, res) => {
     res.send(
       await authCtrl.register(
         name,
+        contact,
         email,
         password,
         address,

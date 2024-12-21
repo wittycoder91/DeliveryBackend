@@ -429,7 +429,7 @@ const deliveryCtrl = () => {
       return { success: false, message: e.message };
     }
   };
-  const updateSelDelivery = async (selDeliveryId, status) => {
+  const updateSelDelivery = async (selDeliveryId, status, price) => {
     try {
       const collection = getDeliveryCollection();
       const collectionLogs = getDeliveryLogsCollection();
@@ -497,6 +497,9 @@ const deliveryCtrl = () => {
         const updateFields = { status: status + 1 };
         if (curPO !== null) {
           updateFields.po = curPO;
+        }
+        if (price > 0) {
+          updateFields.price = new Double(parseFloat(price).toFixed(2));
         }
 
         // Update the document and return the updated data

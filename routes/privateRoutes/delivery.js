@@ -169,9 +169,11 @@ delivery.get("/admin/get-sel-delivery", async (req, res) => {
 });
 delivery.post("/admin/update-sel-delivery", async (req, res) => {
   try {
-    const { selDeliveryId, status } = req.body;
+    const { selDeliveryId, status, price } = req.body;
 
-    res.send(await deliveryCtrl.updateSelDelivery(selDeliveryId, status));
+    res.send(
+      await deliveryCtrl.updateSelDelivery(selDeliveryId, status, price)
+    );
   } catch (e) {
     res.status(500).json({ success: false, message: `API error ${e.message}` });
   }

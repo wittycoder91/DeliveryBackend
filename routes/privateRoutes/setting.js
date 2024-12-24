@@ -70,6 +70,7 @@ setting.post(
         imageurl,
         uploadstatus,
         phonenumber,
+        contact,
         industry,
         w9url,
         uploadW9Status,
@@ -110,6 +111,7 @@ setting.post(
         zipcode,
         avatarPath,
         phonenumber,
+        contact,
         industry,
         w9Path
       );
@@ -405,8 +407,11 @@ setting.post("/admin/update-setting", async (req, res) => {
       curThirdTime,
       curFourthTime,
       curGolden,
+      curGoldenBenefit,
       curSilver,
+      curSilverBenefit,
       curBronze,
+      curBronzeBenefit,
       curAddress,
       curCity,
       curState,
@@ -423,8 +428,11 @@ setting.post("/admin/update-setting", async (req, res) => {
         curThirdTime,
         curFourthTime,
         curGolden,
+        curGoldenBenefit,
         curSilver,
+        curSilverBenefit,
         curBronze,
+        curBronzeBenefit,
         curAddress,
         curCity,
         curState,
@@ -514,5 +522,22 @@ setting.post("/admin/remove-supplier", async (req, res) => {
     res.status(500).json({ success: false, message: `API error ${e.message}` });
   }
 });
+setting.post("/admin/get-price-supplier", async (req, res) => {
+  try {
+    const { selID } = req.body;
 
+    res.send(await settingCtrl.getSelUserInformation(selID));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/set-price-supplier", async (req, res) => {
+  try {
+    const { selID, price } = req.body;
+    console.log(selID);
+    res.send(await settingCtrl.setSelUserPrice(selID, price));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
 module.exports = setting;

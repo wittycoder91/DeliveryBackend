@@ -19,6 +19,7 @@ const dashboardCtrl = () => {
       if (selUser) {
         const totalweight = selUser?.totalweight;
         const loyalty = selUser?.loyalty;
+        let benefit = "";
         let loyaltyVal = 0;
 
         const settingCollection = getSettingCollection();
@@ -28,6 +29,10 @@ const dashboardCtrl = () => {
           if (loyalty === 0) loyaltyVal = settings?.loyalty_bronze;
           else if (loyalty === 1) loyaltyVal = settings?.loyalty_silver;
           else if (loyalty >= 2) loyaltyVal = settings?.loyalty_golden;
+
+          if (loyalty === 0) benefit = settings?.loyalty_bronze_benefit;
+          else if (loyalty === 1) benefit = settings?.loyalty_silver_benefit;
+          else if (loyalty >= 2) benefit = settings?.loyalty_golden_benefit;
         }
 
         return {
@@ -36,6 +41,7 @@ const dashboardCtrl = () => {
             loyalty: loyalty,
             totalweight: totalweight,
             loyaltyVal: loyaltyVal,
+            benefit: benefit,
           },
         };
       } else {

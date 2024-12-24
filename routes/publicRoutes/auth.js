@@ -17,31 +17,20 @@ auth.post("/user/login", async (req, res) => {
   }
 });
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir =
-      file.fieldname === "w9" ? "uploads/w9" : "uploads/images/users";
-    cb(null, uploadDir);
+    cb(null, "uploads/images/users/");
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
 const upload = multer({ storage: storage });
-const uploadFields = upload.fields([
-  { name: "image", maxCount: 1 },
-  { name: "w9", maxCount: 1 },
-]);
-auth.post("/user/register", uploadFields, async (req, res) => {
+auth.post("/user/register", upload.single("image"), async (req, res) => {
   try {
     const imageUploadDir = path.resolve(__dirname, "../uploads/images/users");
-    const w9UploadDir = path.resolve(__dirname, "../uploads/w9");
     if (!fs.existsSync(imageUploadDir)) {
       fs.mkdirSync(imageUploadDir, { recursive: true });
-    }
-    if (!fs.existsSync(w9UploadDir)) {
-      fs.mkdirSync(w9UploadDir, { recursive: true });
     }
 
     const {
@@ -56,8 +45,8 @@ auth.post("/user/register", uploadFields, async (req, res) => {
       phonenumber,
       industry,
     } = req.body;
-    const avatarPath = req.files.image ? req.files.image[0].path : null;
-    const w9Path = req.files.w9 ? req.files.w9[0].path : null;
+
+    let avatarPath = req.file ? req.file.path : "";
 
     res.send(
       await authCtrl.register(
@@ -71,8 +60,7 @@ auth.post("/user/register", uploadFields, async (req, res) => {
         zipcode,
         phonenumber,
         industry,
-        avatarPath,
-        w9Path
+        avatarPath
       )
     );
   } catch (e) {

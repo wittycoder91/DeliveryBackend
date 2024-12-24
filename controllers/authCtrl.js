@@ -14,6 +14,12 @@ const AuthCtrl = () => {
     if (user) return user;
     return false;
   };
+  const checkExistUser = async (username) => {
+    const collection = getUserCollection();
+    const user = await collection.findOne({ name: username });
+    if (user) return user;
+    return false;
+  };
   const checkAdminExist = async (userid) => {
     const collection = getAdminCollection();
     const user = await collection.findOne({ userid: userid });
@@ -22,21 +28,20 @@ const AuthCtrl = () => {
   };
 
   // User Login & Register
-  const login = async (email, password) => {
+  const login = async (emailOrName, password) => {
     const collection = getUserCollection();
-    if (!(await checkExist(email))) {
-      return { success: false, message: "User doesn't exists in the database" };
+
+    let user = await collection.findOne({ email: emailOrName });
+    if (!user) {
+      user = await collection.findOne({ name: emailOrName });
     }
 
-    const user = await collection.findOne({ email: email });
     if (user) {
       const isMatch = await bcrypt.compare(password, user.password);
-
       if (!isMatch) {
         return { success: false, message: "Invalid password" };
       }
 
-      // const token = await user.generateAuthtoken();
       const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET);
       return {
         success: true,
@@ -45,7 +50,7 @@ const AuthCtrl = () => {
         user: user,
       };
     } else {
-      return { success: false, message: "User doesn't exists" };
+      return { success: false, message: "User doesn't exist" };
     }
   };
   const register = async (
@@ -59,10 +64,12 @@ const AuthCtrl = () => {
     zipcode,
     phonenumber,
     industry,
-    avatarPath,
-    w9Path
+    avatarPath
   ) => {
     if (await checkExist(email)) {
+      return { success: false, message: "Email already exists" };
+    }
+    if (await checkExistUser(name)) {
       return { success: false, message: "User already exists" };
     }
 
@@ -82,9 +89,10 @@ const AuthCtrl = () => {
       phonenumber,
       industry,
       avatarPath,
-      w9Path,
+      w9Path: "",
       loyalty: 0,
       trust: 0,
+      price: 0,
       totalweight: new Double(0.0),
     });
     if (user) {

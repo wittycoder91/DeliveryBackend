@@ -55,12 +55,14 @@ const deliveryCtrl = () => {
     const collectionPackage = getPackageCollection();
     let curStatus = 0;
     let curPO = 0;
+    let curPrice = 0;
 
     // Searches the database for a user with the same userId.
     const selUser = await collectionUser.findOne({ _id: new ObjectId(userId) });
     if (selUser) {
       if (selUser?.trust === 1) {
         curStatus = 1;
+        curPrice = selUser?.price;
 
         const latestDelivery = await collection
           .find()
@@ -79,7 +81,7 @@ const deliveryCtrl = () => {
             .toArray();
 
           if (latestLogsDelivery.length === 0 || !latestLogsDelivery[0]?.po) {
-            curPO = yearLastTwoDigits * 10000 + 1;
+            curPO = yearLastTwoDigits * 1000 + 1;
           } else {
             curPO = latestLogsDelivery[0].po + 1;
           }
@@ -100,6 +102,7 @@ const deliveryCtrl = () => {
       residue,
       condition,
       status: curStatus,
+      price: curPrice,
       date,
       time: parseInt(time, 10),
       other,
@@ -484,7 +487,7 @@ const deliveryCtrl = () => {
               .toArray();
 
             if (latestLogsDelivery.length === 0 || !latestLogsDelivery[0]?.po) {
-              curPO = yearLastTwoDigits * 10000 + 1;
+              curPO = yearLastTwoDigits * 1000 + 1;
             } else {
               curPO = latestLogsDelivery[0].po + 1;
             }

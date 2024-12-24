@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-const { ObjectId } = require("mongodb");
+const { ObjectId, Double } = require("mongodb");
 const {
   getUserCollection,
   getMaterialCollection,
@@ -28,11 +28,11 @@ const settingCtrl = () => {
       return { success: false, message: e.message };
     }
   };
-  const getSelUserInformation = async (selUserId) => {
+  const getSelUserInformation = async (selID) => {
     try {
       const collection = getUserCollection();
       const result = await collection.findOne({
-        _id: new ObjectId(selUserId),
+        _id: new ObjectId(selID),
       });
 
       if (result) {
@@ -63,6 +63,7 @@ const settingCtrl = () => {
     zipcode,
     avatarPath,
     phonenumber,
+    contact,
     industry,
     w9Path
   ) => {
@@ -95,6 +96,7 @@ const settingCtrl = () => {
         zipcode: zipcode,
         avatarPath: avatarPath,
         phonenumber,
+        contact,
         industry,
         w9Path,
       };
@@ -850,8 +852,11 @@ const settingCtrl = () => {
     curThirdTime,
     curFourthTime,
     curGolden,
+    curGoldenBenefit,
     curSilver,
+    curSilverBenefit,
     curBronze,
+    curBronzeBenefit,
     curAddress,
     curCity,
     curState,
@@ -872,6 +877,9 @@ const settingCtrl = () => {
             thirdtime: curThirdTime,
             fourthtime: curFourthTime,
             loyalty_golden: curGolden,
+            loyalty_golden_benefit: curGoldenBenefit,
+            loyalty_silver_benefit: curSilverBenefit,
+            loyalty_bronze_benefit: curBronzeBenefit,
             loyalty_silver: curSilver,
             loyalty_bronze: curBronze,
             address: curAddress,
@@ -1080,6 +1088,30 @@ const settingCtrl = () => {
       return { success: false, message: e.message };
     }
   };
+  const setSelUserPrice = async (selID, price) => {
+    try {
+      const collection = getUserCollection();
+
+      const updateFields = { price: new Double(parseFloat(price).toFixed(2)) };
+
+      // Update the document and return the updated data
+      updateData = await collection.findOneAndUpdate(
+        { _id: new ObjectId(selID) },
+        { $set: updateFields },
+        { returnDocument: "after" }
+      );
+
+      console.log(updateData);
+      if (updateData) {
+        return {
+          success: true,
+          message: "The price value has been updated successfully.",
+        };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
 
   return {
     getAllUsers,
@@ -1121,6 +1153,7 @@ const settingCtrl = () => {
     getSupplier,
     editSupplier,
     delSupplier,
+    setSelUserPrice,
   };
 };
 

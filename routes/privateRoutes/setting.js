@@ -144,6 +144,51 @@ setting.get("/admin/get-qualitys", async (req, res) => {
   }
 });
 
+// Date Management
+setting.get("/admin/get-alldates", async (req, res) => {
+  try {
+    res.send(await settingCtrl.getAllDates());
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.get("/admin/get-dates", async (req, res) => {
+  try {
+    const { itemsPerPage, currentPage } = req.query;
+
+    res.send(await settingCtrl.getDates(itemsPerPage, currentPage));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/add-date", async (req, res) => {
+  try {
+    const { selDate } = req.body;
+
+    res.send(await settingCtrl.addDate(selDate));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/edit-date", async (req, res) => {
+  try {
+    const { selID, selDate } = req.body;
+
+    res.send(await settingCtrl.editDate(selID, selDate));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+setting.post("/admin/remove-date", async (req, res) => {
+  try {
+    const { selID } = req.body;
+
+    res.send(await settingCtrl.delDate(selID));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+
 // Material Management
 setting.get("/admin/get-allmaterials", async (req, res) => {
   try {

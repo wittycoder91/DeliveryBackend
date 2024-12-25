@@ -10,6 +10,7 @@ const {
   getConditionCollection,
   getPackageCollection,
   getQualityCollection,
+  getDateCollection,
 } = require("../helpers/db-conn");
 
 const settingCtrl = () => {
@@ -149,6 +150,133 @@ const settingCtrl = () => {
         message: "Success!",
         data: result,
       };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+
+  // Date Management
+  const getAllDates = async () => {
+    try {
+      const collection = getDateCollection();
+      const datas = await collection.find().toArray();
+
+      return {
+        success: true,
+        message: "Success!",
+        data: datas,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const getDates = async (itemsPerPage, currentPage) => {
+    try {
+      const collection = getDateCollection();
+
+      const limit = parseInt(itemsPerPage, 10);
+      const page = parseInt(currentPage, 10);
+      const skip = (page - 1) * limit;
+
+      const query = {};
+      const datas = await collection
+        .find(query)
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      const totalItems = await collection.countDocuments(query);
+
+      return {
+        success: true,
+        message: "Success!",
+        totalCount: totalItems,
+        data: datas,
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const addDate = async (curDate) => {
+    try {
+      const collection = getDateCollection();
+      const result = await collection.find({ date: curDate }).toArray();
+
+      if (result.length > 0) {
+        return {
+          success: false,
+          message: "This date is exist.",
+        };
+      } else {
+        await collection.insertOne({
+          date: curDate,
+        });
+
+        return {
+          success: true,
+          message: "The Data has been added successfully.",
+        };
+      }
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const editDate = async (selID, curDate) => {
+    try {
+      const collection = getDateCollection();
+
+      // Check if the date with the given ID exists
+      const selData = await collection.findOne({ _id: new ObjectId(selID) });
+
+      if (!selData) {
+        return {
+          success: false,
+          message: "Date with the given ID does not exist.",
+        };
+      }
+
+      // Check if another date with the same date exists
+      const result = await collection.findOne({
+        date: curDate,
+        _id: { $ne: new ObjectId(selID) },
+      });
+
+      if (result) {
+        return {
+          success: false,
+          message: "This date already exists.",
+        };
+      }
+
+      // Update the date details
+      await collection.updateOne(
+        { _id: new ObjectId(selID) },
+        {
+          $set: {
+            date: curDate,
+          },
+        }
+      );
+
+      return {
+        success: true,
+        message: "The data has been updated successfully.",
+      };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  };
+  const delDate = async (selId) => {
+    try {
+      const collection = getDateCollection();
+      const result = await collection.deleteOne({
+        _id: new ObjectId(selId),
+      });
+
+      if (result) {
+        return { success: true, message: "Removed data Successfully" };
+      } else {
+        return { success: false, message: "MongDB API Error" };
+      }
     } catch (e) {
       return { success: false, message: e.message };
     }
@@ -1124,6 +1252,11 @@ const settingCtrl = () => {
     addMaterial,
     editMaterial,
     delMaterial,
+    getAllDates,
+    getDates,
+    addDate,
+    editDate,
+    delDate,
     getIndustry,
     addIndustry,
     editIndustry,

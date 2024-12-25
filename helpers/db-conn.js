@@ -174,6 +174,9 @@ getDeliveryResiduesCollection = () => {
 getDeliveryConditionsCollection = () => {
   return db.collection("conditions");
 };
+getDateCollection = () => {
+  return db.collection("dates");
+};
 
 module.exports = {
   getDb,
@@ -194,4 +197,5 @@ module.exports = {
   getDeliveryColorsCollection,
   getDeliveryResiduesCollection,
   getDeliveryConditionsCollection,
+  getDateCollection,
 };

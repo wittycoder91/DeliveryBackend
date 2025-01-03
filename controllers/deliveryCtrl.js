@@ -91,76 +91,84 @@ const deliveryCtrl = () => {
       }
     }
 
-    const delivery = await collection.insertOne({
-      userId,
-      po: curPO,
-      material,
-      weight: parseFloat(weight),
-      packaging,
-      countpackage: parseInt(countpackage, 10),
-      color,
-      residue,
-      condition,
-      status: curStatus,
-      price: curPrice,
-      date,
+    const deliveryExist = await collection.findOne({
+      date: date,
       time: parseInt(time, 10),
-      other,
-      avatarPath,
-      sdsPath,
-      read: false,
     });
-
-    if (delivery) {
-      const deliveries = await collection
-        .find({
-          read: false,
-        })
-        .toArray();
-
-      const result = await Promise.all(
-        deliveries.map(async (delivery) => {
-          // Fetch user data
-          const user = await collectionUser.findOne({
-            _id: new ObjectId(delivery.userId),
-          });
-          const userName = user ? user.name : null;
-
-          // Fetch material data
-          const material = await collectionMaterial.findOne({
-            _id: new ObjectId(delivery.material),
-          });
-          const materialName = material ? material.materialName : null;
-
-          // Fetch packaging data
-          const packaging = await collectionPackage.findOne({
-            _id: new ObjectId(delivery.packaging),
-          });
-          const packagingName = packaging ? packaging.name : null;
-
-          return {
-            ...delivery,
-            userName,
-            materialName,
-            packagingName,
-          };
-        })
-      );
-
-      // Emit the updated notification count to all clients
-      axios.post("http://localhost:6000/broadcast", {
-        type: "ADD_DELIVERY",
-        message: "A new delivery has been added",
-        count: deliveries.length,
-        data: result,
+    if (deliveryExist) {
+      return { success: false, message: "You can not deliver at that time." };
+    } else {
+      const delivery = await collection.insertOne({
+        userId,
+        po: curPO,
+        material,
+        weight: parseFloat(weight),
+        packaging,
+        countpackage: parseInt(countpackage, 10),
+        color,
+        residue,
+        condition,
+        status: curStatus,
+        price: curPrice,
+        date,
+        time: parseInt(time, 10),
+        other,
+        avatarPath,
+        sdsPath,
+        read: false,
       });
 
-      return {
-        success: true,
-        message: "The delivery request added successfully",
-      };
-    } else {
-      return { success: false, message: "MongoDB API error" };
+      if (delivery) {
+        const deliveries = await collection
+          .find({
+            read: false,
+          })
+          .toArray();
+
+        const result = await Promise.all(
+          deliveries.map(async (delivery) => {
+            // Fetch user data
+            const user = await collectionUser.findOne({
+              _id: new ObjectId(delivery.userId),
+            });
+            const userName = user ? user.name : null;
+
+            // Fetch material data
+            const material = await collectionMaterial.findOne({
+              _id: new ObjectId(delivery.material),
+            });
+            const materialName = material ? material.materialName : null;
+
+            // Fetch packaging data
+            const packaging = await collectionPackage.findOne({
+              _id: new ObjectId(delivery.packaging),
+            });
+            const packagingName = packaging ? packaging.name : null;
+
+            return {
+              ...delivery,
+              userName,
+              materialName,
+              packagingName,
+            };
+          })
+        );
+
+        // Emit the updated notification count to all clients
+        axios.post("http://localhost:6000/broadcast", {
+          type: "ADD_DELIVERY",
+          message: "A new delivery has been added",
+          count: deliveries.length,
+          data: result,
+        });
+
+        return {
+          success: true,
+          message: "The delivery request added successfully",
+        };
+      } else {
+        return { success: false, message: "MongoDB API error" };
+      }
     }
   };
   const getLastestDelivery = async () => {

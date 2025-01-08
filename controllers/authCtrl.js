@@ -101,6 +101,71 @@ const AuthCtrl = () => {
       return { success: false, message: "MongoDB API error" };
     }
   };
+  const forgetPassword = async (email) => {
+    if (await checkExist(email)) {
+      // const serverHost = mailData.parsed?.MAIL_SERVER_HOST;
+      // const serverName = mailData.parsed?.MAIL_SERVER_NAME;
+      // const serverPassword = mailData.parsed?.MAIL_SERVER_PASSWORD;
+      // const transporter = nodemailer.createTransport({
+      //   host: serverHost,
+      //   port: 587,
+      //   secure: false,
+      //   auth: {
+      //     user: serverName,
+      //     pass: serverPassword,
+      //   },
+      // });
+      // let mailOptions;
+      // mailOptions = {
+      //   from: serverName,
+      //   to: email,
+      //   subject: "Delivery Support Team",
+      //   html: "Text Content",
+      // };
+      // return new Promise((resolve, reject) => {
+      //   transporter.sendMail(mailOptions, function (error, info) {
+      //     if (error) {
+      //       console.log("Error MESSAGE", error.message);
+      //       reject({ success: false, message: error.message });
+      //     } else {
+      //       console.log("Email sent");
+      //       resolve({
+      //         success: true,
+      //         message: "The email has been sent successfully.",
+      //       });
+      //     }
+      //   });
+      // });
+    } else {
+      return { success: false, message: "Email is not exists" };
+    }
+  };
+  const changePassword = async (email, password) => {
+    if (await checkExist(email)) {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      const collection = getUserCollection();
+      const updateFields = { password: hashedPassword };
+
+      updateData = await collection.findOneAndUpdate(
+        { email: email },
+        { $set: updateFields },
+        { returnDocument: "after" }
+      );
+
+      if (updateData) {
+        return {
+          success: true,
+          message: "Your password changed successfully.",
+        };
+      } else {
+        return { success: false, message: "MongDB API Error" };
+      }
+    } else {
+      return { success: false, message: "Email is not exists" };
+    }
+  };
 
   // Admin Login
   const adminLogin = async (userId, password) => {
@@ -149,6 +214,8 @@ const AuthCtrl = () => {
   return {
     login,
     register,
+    forgetPassword,
+    changePassword,
     adminLogin,
     checkExist,
     getAllIndustry,

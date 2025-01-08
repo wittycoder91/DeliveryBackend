@@ -68,6 +68,26 @@ auth.post("/user/register", upload.single("image"), async (req, res) => {
   }
 });
 
+auth.post("/user/forgetpassword", async (req, res) => {
+  try {
+    const data = req.body;
+    const email = data.email;
+    res.send(await authCtrl.forgetPassword(email));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+auth.post("/user/changepassword", async (req, res) => {
+  try {
+    const data = req.body;
+    const email = data.email;
+    const password = data.password;
+    res.send(await authCtrl.changePassword(email, password));
+  } catch (e) {
+    res.status(500).json({ success: false, message: `API error ${e.message}` });
+  }
+});
+
 // Admin Login
 auth.post("/admin/login", async (req, res) => {
   try {

@@ -54,7 +54,7 @@ const deliveryCtrl = () => {
     const collectionMaterial = getMaterialCollection();
     const collectionPackage = getPackageCollection();
     let curStatus = 0;
-    let curPO = 0;
+    let currentMaxPo = 0;
     let curPrice = 0;
 
     // Searches the database for a user with the same userId.
@@ -72,21 +72,32 @@ const deliveryCtrl = () => {
 
         const currentYear = new Date().getFullYear();
         const yearLastTwoDigits = currentYear % 100;
+        const defaultPo = yearLastTwoDigits * 1000 + 1;
 
-        if (latestDelivery.length === 0 || !latestDelivery[0]?.po) {
-          const latestLogsDelivery = await collectionLogs
-            .find()
-            .sort({ po: -1 })
-            .limit(1)
-            .toArray();
+        if (latestDelivery.length > 0) {
+          currentMaxPo = latestDelivery[0]?.po;
+        }
 
-          if (latestLogsDelivery.length === 0 || !latestLogsDelivery[0]?.po) {
-            curPO = yearLastTwoDigits * 1000 + 1;
-          } else {
-            curPO = latestLogsDelivery[0].po + 1;
+        const latestLogsDelivery = await collectionLogs
+          .find()
+          .sort({ po: -1 })
+          .limit(1)
+          .toArray();
+        if (latestLogsDelivery.length > 0) {
+          let logMaxPo = latestLogsDelivery[0]?.po;
+          if (currentMaxPo < logMaxPo) {
+            currentMaxPo = logMaxPo;
           }
+        }
+
+        if (currentMaxPo === 0) {
+          currentMaxPo = defaultPo;
         } else {
-          curPO = latestDelivery[0].po + 1;
+          if (currentMaxPo < defaultPo) {
+            currentMaxPo = defaultPo;
+          } else {
+            currentMaxPo = currentMaxPo + 1;
+          }
         }
       }
     }
@@ -100,7 +111,7 @@ const deliveryCtrl = () => {
     } else {
       const delivery = await collection.insertOne({
         userId,
-        po: curPO,
+        po: currentMaxPo,
         material,
         weight: parseFloat(weight),
         packaging,

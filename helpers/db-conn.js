@@ -23,7 +23,7 @@ const connectToDatabase = async () => {
         {
           userid: "admin",
           password:
-            "$2a$10$3/.rwSADokeOEeFzhBixp05.HwxnUcTakgdam0Qz5NCQrSsZEuyzW",
+            "$2a$10$D54hxd3YjSbR0z9DiPv6yefcOdh5RW94xNfRjKRIlfYNS1Vg/42oS",
         },
       ],
       industry: [

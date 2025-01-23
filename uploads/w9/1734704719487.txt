@@ -1,0 +1,186 @@
+import AWS from "aws-sdk";
+import React, { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+
+import "./App.css";
+import MainLayout from "./components/MainLayout";
+import Home from "./pages/Home";
+import About from "./pages/About";
+import BillFilter from "./pages/BillFilter";
+import Polls from "./pages/Polls";
+import PollsDetail from "./pages/PollsDetail";
+import Bill from "./pages/Bill";
+import MemberDetail from "./pages/MemberDetail";
+import Member from "./pages/Member";
+import Orders from "./pages/Orders";
+import OrdersDetail from "./pages/OrdersDetail";
+import President from "./pages/President";
+import PresidentDetail from "./pages/PresidentDetail";
+import Comparison from "./pages/Comparison";
+import SignIn from "./pages/SignIn";
+import Profile from "./pages/Profile";
+import ProfileDetail from "./pages/ProfileDetail";
+import SignUp1 from "./pages/SignUp1";
+import SignUp2 from "./pages/SignUp2";
+import DemographicsDetail from "./pages/DemographicsDetail";
+import Confirmation from "./pages/Confirmation";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import { getValueByName } from "./configs/common";
+
+const App: React.FC = () => {
+  AWS.config.region = process.env.REACT_APP_AWS_REGION;
+  const cognito = new AWS.CognitoIdentityServiceProvider();
+  const [cookies, setCookie, removeCookie] = useCookies();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  // const [acknowledged, setAcknowledged] = useState(false);
+
+  const RedirectToHome = () => {
+    useEffect(() => {
+      navigate("/home");
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [navigate]);
+
+    return null;
+  };
+
+  useEffect(() => {
+    const checkToken = () => {
+      const token = cookies["token"];
+
+      if (
+        !token &&
+        location.pathname !== "/" &&
+        location.pathname !== "/signup-person" &&
+        location.pathname !== "/signup-infor"
+      ) {
+        navigate("/");
+      } else if (
+        token &&
+        (location.pathname === "/signup-person" ||
+          location.pathname === "/signup-infor" ||
+          location.pathname === "/")
+      ) {
+        if (cookies["profileData"]) {
+          const profileData = cookies["profileData"];
+          const firstLoginStatus = getValueByName(
+            profileData,
+            "custom:privacy_policy"
+          );
+          console.log(profileData);
+
+          if (firstLoginStatus === "first") {
+            UpdateUserAttribute();
+          } else {
+            navigate("/confirmation");
+          }
+        }
+      }
+      setCheckingAuth(false);
+    };
+
+    checkToken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cookies, location.pathname, navigate]);
+
+  const UpdateUserAttribute = async () => {
+    if (!cookies["token"]) return;
+
+    // Update the aws user attribute
+    const params = {
+      AccessToken: cookies["token"],
+      UserAttributes: [
+        {
+          Name: "custom:privacy_policy",
+          Value: "accepted",
+        },
+      ],
+    };
+
+    try {
+      await cognito.updateUserAttributes(params).promise();
+
+      // Update the profileData cookie data
+      const updatedProfileData = [...cookies["profileData"]];
+      const privacyPolicyIndex = updatedProfileData.findIndex(
+        (item) => item.Name === "custom:privacy_policy"
+      );
+      if (privacyPolicyIndex !== -1) {
+        updatedProfileData[privacyPolicyIndex].Value = "accepted";
+      }
+
+      setCookie("profileData", updatedProfileData);
+      navigate("/privacy-policy");
+    } catch (err: any) {
+      console.error("Error Update the password:", err);
+      throw err;
+    }
+  };
+
+  // Show nothing (or a loading spinner) while checking the token
+  if (checkingAuth) {
+    return null;
+  }
+
+  if (cookies["token"]) {
+    const decoded: any = jwtDecode(cookies["token"]);
+
+    const currentTime = Date.now() / 1000;
+
+    if (decoded.auth_time + 6 * 24 * 60 < currentTime) {
+      Object.keys(cookies).forEach((cookieName) => removeCookie(cookieName));
+    }
+  }
+
+  return (
+    <MainLayout>
+      <Routes>
+        <Route path="/" element={<SignIn />} />
+        <Route path="/signup-person" element={<SignUp1 />} />
+        <Route path="/signup-infor" element={<SignUp2 />} />
+        <Route path="/confirmation" element={<Confirmation />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/bill/:leg_id" element={<Bill />} />
+        <Route path="/bill-filter" element={<BillFilter />} />
+        <Route path="/member-filter" element={<Member />} />
+        <Route path="/member-detail/:member_id" element={<MemberDetail />} />
+        <Route path="/orders-filter" element={<Orders />} />
+        <Route path="/order-detail/:leg_id" element={<OrdersDetail />} />
+        <Route path="/president-filter" element={<President />} />
+        <Route
+          path="/president-detail/:president_id"
+          element={<PresidentDetail />}
+        />
+        <Route path="/about" element={<About />} />
+        <Route path="/polls" element={<Polls />} />
+        <Route path="/polls-detail" element={<PollsDetail />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/profiledetail" element={<ProfileDetail />} />
+        <Route path="/compare/:memberIds" element={<Comparison />} />
+        <Route path="/demographicsdetail" element={<DemographicsDetail />} />
+
+        <Route path="*" element={<RedirectToHome />} />
+      </Routes>
+    </MainLayout>
+  );
+};
+
+// Wrap App with Router
+const WrappedApp = () => (
+  <Router>
+    <App />
+  </Router>
+);
+
+export default WrappedApp;

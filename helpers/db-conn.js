@@ -78,7 +78,7 @@ const connectToDatabase = async () => {
       settings: [
         {
           firsttime: 300,
-          fourttime: 8310,
+          fourthtime: 8310,
           loyalty_bronze: 200,
           loyalty_gold: 1000,
           loyalty_silver: 50,
@@ -91,6 +91,9 @@ const connectToDatabase = async () => {
           zipcode: "zipcode",
           report: "report",
           terms: "terms",
+          loyalty_bronze_benefit: "",
+          loyalty_golden_benefit: "",
+          loyalty_silver_benefit: "",
         },
       ],
     };

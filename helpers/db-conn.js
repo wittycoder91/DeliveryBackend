@@ -61,6 +61,12 @@ const connectToDatabase = async () => {
         { name: "Stacked on Skids" },
         { name: "Loosed in Boxes" },
       ],
+      qualitys: [
+        { name: "A" },
+        { name: "B" },
+        { name: "C" },
+        { name: "D" },
+      ],
       residues: [
         { residueName: "Food Product", residueDesc: "Description 1", note: "" },
         {

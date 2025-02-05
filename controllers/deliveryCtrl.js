@@ -525,7 +525,11 @@ const deliveryCtrl = () => {
         }
 
         // Build the update object dynamically
-        const updateFields = { status: status + 1, po: currentMaxPo };
+        const updateFields = { status: status + 1 };
+        if (currentMaxPo > 0) {
+          updateFields.po = currentMaxPo;
+        }
+
         if (price > 0) {
           updateFields.price = new Double(parseFloat(price).toFixed(2));
         }

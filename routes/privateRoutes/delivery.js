@@ -96,7 +96,9 @@ delivery.post("/user/add-delivery", uploadFields, async (req, res) => {
 });
 delivery.get("/user/lastest-delivery", async (req, res) => {
   try {
-    res.send(await deliveryCtrl.getLastestDelivery());
+    const userId = getUserIdFromToken(req.headers["x-auth-token"]);
+
+    res.send(await deliveryCtrl.getLastestDelivery(userId));
   } catch (e) {
     res.status(500).json({ success: false, message: `API error ${e.message}` });
   }

@@ -182,13 +182,13 @@ const deliveryCtrl = () => {
       }
     }
   };
-  const getLastestDelivery = async () => {
+  const getLastestDelivery = async (userId) => {
     try {
       const collection = getDeliveryCollection();
       const loggCollection = getDeliveryLogsCollection();
 
       const latestDelivery = await collection
-        .find()
+        .find({ userId })
         .sort({ _id: -1 })
         .limit(1)
         .toArray();
@@ -197,7 +197,7 @@ const deliveryCtrl = () => {
         return { success: true, data: latestDelivery[0] };
       } else {
         const latestLogDelivery = await loggCollection
-          .find()
+          .find({ userId })
           .sort({ _id: -1 })
           .limit(1)
           .toArray();

@@ -77,10 +77,10 @@ const settingCtrl = () => {
     if (selData) {
       const isMatch = await bcrypt.compare(password, selData.password);
 
-      if (!isMatch) {
+      if (!isMatch && newpassword.length > 0) {
         return {
           success: false,
-          message: "Please input the password correctly.",
+          message: "Please input the old password correctly.",
         };
       }
 
@@ -88,18 +88,18 @@ const settingCtrl = () => {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(newpassword, salt);
       const updateFields = {
-        name: name,
-        email: email,
-        password: hashedPassword,
-        address: address,
-        city: city,
-        state: state,
-        zipcode: zipcode,
-        avatarPath: avatarPath,
+        name,
+        email,
+        address,
+        city,
+        state,
+        zipcode,
+        avatarPath,
         phonenumber,
         contact,
         industry,
         w9Path,
+        ...(newpassword.length > 0 && { password: hashedPassword }),
       };
 
       // Update the document and return the updated data

@@ -182,13 +182,13 @@ const deliveryCtrl = () => {
       }
     }
   };
-  const getLastestDelivery = async () => {
+  const getLastestDelivery = async (userId) => {
     try {
       const collection = getDeliveryCollection();
       const loggCollection = getDeliveryLogsCollection();
 
       const latestDelivery = await collection
-        .find()
+        .find({ userId })
         .sort({ _id: -1 })
         .limit(1)
         .toArray();
@@ -197,7 +197,7 @@ const deliveryCtrl = () => {
         return { success: true, data: latestDelivery[0] };
       } else {
         const latestLogDelivery = await loggCollection
-          .find()
+          .find({ userId })
           .sort({ _id: -1 })
           .limit(1)
           .toArray();
@@ -525,7 +525,11 @@ const deliveryCtrl = () => {
         }
 
         // Build the update object dynamically
-        const updateFields = { status: status + 1, po: currentMaxPo };
+        const updateFields = { status: status + 1 };
+        if (currentMaxPo > 0) {
+          updateFields.po = currentMaxPo;
+        }
+
         if (price > 0) {
           updateFields.price = new Double(parseFloat(price).toFixed(2));
         }

@@ -103,39 +103,21 @@ const AuthCtrl = () => {
   };
   const forgetPassword = async (email) => {
     if (await checkExist(email)) {
-      // const serverHost = mailData.parsed?.MAIL_SERVER_HOST;
-      // const serverName = mailData.parsed?.MAIL_SERVER_NAME;
-      // const serverPassword = mailData.parsed?.MAIL_SERVER_PASSWORD;
-      // const transporter = nodemailer.createTransport({
-      //   host: serverHost,
-      //   port: 587,
-      //   secure: false,
-      //   auth: {
-      //     user: serverName,
-      //     pass: serverPassword,
-      //   },
-      // });
-      // let mailOptions;
-      // mailOptions = {
-      //   from: serverName,
-      //   to: email,
-      //   subject: "Delivery Support Team",
-      //   html: "Text Content",
-      // };
-      // return new Promise((resolve, reject) => {
-      //   transporter.sendMail(mailOptions, function (error, info) {
-      //     if (error) {
-      //       console.log("Error MESSAGE", error.message);
-      //       reject({ success: false, message: error.message });
-      //     } else {
-      //       console.log("Email sent");
-      //       resolve({
-      //         success: true,
-      //         message: "The email has been sent successfully.",
-      //       });
-      //     }
-      //   });
-      // });
+      const collectiionUser =  getUserCollection();
+
+      await collectiionUser.updateOne(
+        { email: email },
+        {
+          $set: {
+            forgetflag: 1,
+          },
+        }
+      );
+
+      return {
+        success: true,
+        message: "The status of forget password flag has been updated.",
+      };
     } else {
       return { success: false, message: "Email is not exists" };
     }
@@ -146,10 +128,10 @@ const AuthCtrl = () => {
       const hashedPassword = await bcrypt.hash(password, salt);
 
       const collection = getUserCollection();
-      const updateFields = { password: hashedPassword };
+      const updateFields = { password: hashedPassword, forgetflag: 0 };
 
       updateData = await collection.findOneAndUpdate(
-        { email: email },
+        { email: email, forgetflag: 1 },
         { $set: updateFields },
         { returnDocument: "after" }
       );

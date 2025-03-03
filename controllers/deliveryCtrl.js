@@ -12,6 +12,14 @@ const {
   getDeliveryResiduesCollection,
   getDeliveryConditionsCollection,
 } = require("../helpers/db-conn");
+const Mailjet = require("node-mailjet");
+
+const { formatTime } = require("../config/common");
+
+const mailjetClient = Mailjet.apiConnect(
+  process.env.MJ_APIKEY_PUBLIC,
+  process.env.MJ_APIKEY_PRIVATE
+);
 
 const deliveryCtrl = () => {
   // Delivery Management
@@ -45,6 +53,7 @@ const deliveryCtrl = () => {
     date,
     time,
     other,
+    note,
     avatarPath,
     sdsPath
   ) => {
@@ -124,6 +133,7 @@ const deliveryCtrl = () => {
         date,
         time: parseInt(time, 10),
         other,
+        note,
         avatarPath,
         sdsPath,
         read: false,
@@ -172,6 +182,28 @@ const deliveryCtrl = () => {
           count: deliveries.length,
           data: result,
         });
+
+        // Send Email
+        if (selUser?.email) {
+          await mailjetClient.post("send", { version: "v3.1" }).request({
+            Messages: [
+              {
+                From: {
+                  Email: "elias@holamicasa.com",
+                  Name: "Archpolymers",
+                },
+                To: [
+                  {
+                    Email: selUser?.email,
+                    Name: "",
+                  },
+                ],
+                Subject: "Delivery Add",
+                TextPart: `${selUser?.name} sent a delivery request`,
+              },
+            ],
+          });
+        }
 
         return {
           success: true,
@@ -531,7 +563,7 @@ const deliveryCtrl = () => {
         }
 
         if (price > 0) {
-          updateFields.price = new Double(parseFloat(price).toFixed(2));
+          updateFields.price = new Double(parseFloat(price));
         }
 
         // Update the document and return the updated data
@@ -570,6 +602,34 @@ const deliveryCtrl = () => {
           delieryData: updatedDelivery,
         });
 
+        // Send Email
+        if (updateData) {
+          let emailContent = "";
+          if (status === 0) {
+            emailContent = `${user?.name} status has been updated from 'Waiting' to 'Pending for Receiving'`;
+          } else if (status === 1) {
+            emailContent = `${user?.name} status has been updated from 'Pending for Receiving' to 'Received'`;
+          }
+          await mailjetClient.post("send", { version: "v3.1" }).request({
+            Messages: [
+              {
+                From: {
+                  Email: "elias@holamicasa.com",
+                  Name: "Archpolymers",
+                },
+                To: [
+                  {
+                    Email: user?.email,
+                    Name: "",
+                  },
+                ],
+                Subject: "Delivery Status",
+                TextPart: emailContent,
+              },
+            ],
+          });
+        }
+
         return {
           success: true,
           message:
@@ -587,7 +647,6 @@ const deliveryCtrl = () => {
     status,
     totalamount,
     tareamount,
-    netamount,
     quality,
     pkgscount,
     package,
@@ -650,7 +709,10 @@ const deliveryCtrl = () => {
         dataWithoutId.tareamount = new Double(
           parseFloat(tareamount).toFixed(2)
         );
-        dataWithoutId.netamount = new Double(parseFloat(netamount).toFixed(2));
+        const netamount =
+          new Double(parseFloat(totalamount).toFixed(2)) -
+          new Double(parseFloat(tareamount).toFixed(2));
+        dataWithoutId.netamount = netamount;
         dataWithoutId.quality = quality;
         dataWithoutId.countpackage = new Int32(pkgscount);
         dataWithoutId.packaging = package;
@@ -707,6 +769,28 @@ const deliveryCtrl = () => {
           count: 1,
           delieryData: updatedDelivery,
         });
+
+        // Send Email
+        if (user) {
+          await mailjetClient.post("send", { version: "v3.1" }).request({
+            Messages: [
+              {
+                From: {
+                  Email: "elias@holamicasa.com",
+                  Name: "Archpolymers",
+                },
+                To: [
+                  {
+                    Email: user?.email,
+                    Name: "",
+                  },
+                ],
+                Subject: "Delivery Status",
+                TextPart: `${user?.name}'s delivery has been successfully accepted`,
+              },
+            ],
+          });
+        }
 
         return {
           success: true,
@@ -782,6 +866,28 @@ const deliveryCtrl = () => {
           count: 1,
           delieryData: updatedDelivery,
         });
+
+        // Send Email
+        if (updateData) {
+          await mailjetClient.post("send", { version: "v3.1" }).request({
+            Messages: [
+              {
+                From: {
+                  Email: "elias@holamicasa.com",
+                  Name: "Archpolymers",
+                },
+                To: [
+                  {
+                    Email: user?.email,
+                    Name: "",
+                  },
+                ],
+                Subject: "Delivery Status",
+                TextPart: `${user?.name}'s delivery was disapproved`,
+              },
+            ],
+          });
+        }
 
         return {
           success: true,
@@ -1219,6 +1325,12 @@ const deliveryCtrl = () => {
       const collectionMaterial = getMaterialCollection();
       const collectionPackage = getPackageCollection();
 
+      let userName = "";
+      let userEmail = "";
+      const oldDeliveryData = await collection.findOne({
+        _id: new ObjectId(selDeliveryId),
+      });
+
       const updateFields = {
         date: updateDate,
         time: parseInt(updateTime, 10),
@@ -1243,7 +1355,8 @@ const deliveryCtrl = () => {
             const user = await collectionUser.findOne({
               _id: new ObjectId(delivery.userId),
             });
-            const userName = user ? user.name : null;
+            userName = user ? user.name : "";
+            userEmail = user?.email;
 
             // Fetch material data
             const material = await collectionMaterial.findOne({
@@ -1273,6 +1386,32 @@ const deliveryCtrl = () => {
           count: deliveries.length,
           data: result,
         });
+
+        // Send Email
+        if (oldDeliveryData && userEmail && userName) {
+          await mailjetClient.post("send", { version: "v3.1" }).request({
+            Messages: [
+              {
+                From: {
+                  Email: "elias@holamicasa.com",
+                  Name: "Archpolymers",
+                },
+                To: [
+                  {
+                    Email: userEmail,
+                    Name: "",
+                  },
+                ],
+                Subject: "Delivery Request Update",
+                TextPart: `${userName} has updated the date and time as ${
+                  oldDeliveryData?.date
+                }, ${formatTime(
+                  parseInt(oldDeliveryData?.time)
+                )} to ${updateDate}, ${formatTime(parseInt(updateTime))}`,
+              },
+            ],
+          });
+        }
 
         return {
           success: true,

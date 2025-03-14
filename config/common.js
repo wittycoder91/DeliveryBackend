@@ -31,6 +31,5 @@ const getCurrentDate = () => {
 module.exports = {
   getUserIdFromToken,
   formatTime,
-  companyEmail,
   getCurrentDate,
 };

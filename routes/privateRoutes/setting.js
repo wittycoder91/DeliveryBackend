@@ -462,6 +462,7 @@ setting.post("/admin/update-setting", async (req, res) => {
       curState,
       curZipcode,
       curTel,
+      curEmail,
       curPrivacy,
       curReport,
     } = req.body;
@@ -483,6 +484,7 @@ setting.post("/admin/update-setting", async (req, res) => {
         curState,
         curZipcode,
         curTel,
+        curEmail,
         curPrivacy,
         curReport
       )

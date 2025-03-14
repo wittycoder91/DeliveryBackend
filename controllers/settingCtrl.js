@@ -990,6 +990,7 @@ const settingCtrl = () => {
     curState,
     curZipcode,
     curTel,
+    curEmail,
     curPrivacy,
     curReport
   ) => {
@@ -1015,6 +1016,7 @@ const settingCtrl = () => {
             state: curState,
             zipcode: curZipcode,
             telephone: curTel,
+            emailaddress: curEmail,
             terms: curPrivacy,
             report: curReport,
           },

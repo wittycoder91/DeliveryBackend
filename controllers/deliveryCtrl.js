@@ -185,6 +185,14 @@ const deliveryCtrl = () => {
 
         // Send Email
         if (selUser?.email) {
+          const collection = getSettingCollection();
+          const settings = await collection.findOne({});
+          let adminEmail = "";
+
+          if (settings) {
+            adminEmail = settings.emailaddress;
+          }
+
           await mailjetClient.post("send", { version: "v3.1" }).request({
             Messages: [
               {
@@ -194,7 +202,7 @@ const deliveryCtrl = () => {
                 },
                 To: [
                   {
-                    Email: "accounting@archpolymers.com",
+                    Email: adminEmail,
                     Name: "Archpolymers",
                   },
                 ],
@@ -1446,6 +1454,14 @@ const deliveryCtrl = () => {
 
         // Send Email
         if (oldDeliveryData && userEmail && userName) {
+          const collection = getSettingCollection();
+          const settings = await collection.findOne({});
+          let adminEmail = "";
+
+          if (settings) {
+            adminEmail = settings.emailaddress;
+          }
+
           await mailjetClient.post("send", { version: "v3.1" }).request({
             Messages: [
               {
@@ -1455,7 +1471,7 @@ const deliveryCtrl = () => {
                 },
                 To: [
                   {
-                    Email: "accounting@archpolymers.com",
+                    Email: adminEmail,
                     Name: "",
                   },
                 ],

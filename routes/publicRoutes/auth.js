@@ -85,12 +85,16 @@ auth.post("/user/forgetpassword", async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(200).json({ success: false, message: "Email is required" });
+      return res
+        .status(200)
+        .json({ success: false, message: "Email is required" });
     }
 
     const updateUser = await authCtrl.forgetPassword(email);
-    if(!updateUser.success) {
-      return res.status(200).json({ success: false, message: updateUser.message });
+    if (!updateUser.success) {
+      return res
+        .status(200)
+        .json({ success: false, message: updateUser.message });
     }
 
     // If forgetPassword is successful, send email using Mailjet
@@ -98,38 +102,47 @@ auth.post("/user/forgetpassword", async (req, res) => {
       Messages: [
         {
           From: {
-            Email: "elias@holamicasa.com",
-            Name: "Archpolymers"
+            Email: "accounting@archpolymers.com",
+            Name: "Archpolymers",
           },
           To: [
             {
               Email: email,
-              Name: ""
-            }
+              Name: "",
+            },
           ],
           Subject: "Reset Your Password",
           TextPart: "Click the link below to reset your password.",
-          HTMLPart: `<h3>Hello,</h3><p>Click <a href="https://customer.archpolymers.com/#/changepassword?email=${encodeURIComponent(email)}">here</a> to reset your password.</p>`
-        }
-      ]
+          HTMLPart: `<h3>Hello,</h3><p>Click <a href="https://customer.archpolymers.com/#/changepassword?email=${encodeURIComponent(
+            email
+          )}">here</a> to reset your password.</p>`,
+        },
+      ],
     });
 
     const result = await request;
 
     // Check if email was successfully sent
     if (result.body?.Messages?.[0]?.Status === "success") {
-      return res.status(200).json({ success: true, message: "Email sent successfully, please check your mailbox" });
+      return res
+        .status(200)
+        .json({
+          success: true,
+          message: "Email sent successfully, please check your mailbox",
+        });
     } else {
       console.error("Mailjet error:", result.body);
-      return res.status(500).json({ success: false, message: "Failed to send email" });
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to send email" });
     }
-
   } catch (e) {
     console.error("Unexpected Error:", e.message);
-    res.status(500).json({ success: false, message: `API error: ${e.message}` });
+    res
+      .status(500)
+      .json({ success: false, message: `API error: ${e.message}` });
   }
 });
-
 
 auth.post("/user/changepassword", async (req, res) => {
   try {
@@ -162,6 +175,5 @@ auth.get("/admin/get-allindustry", async (req, res) => {
     res.status(500).json({ success: false, message: `API error ${e.message}` });
   }
 });
-
 
 module.exports = auth;

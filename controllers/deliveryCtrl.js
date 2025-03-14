@@ -14,8 +14,7 @@ const {
 } = require("../helpers/db-conn");
 const Mailjet = require("node-mailjet");
 
-const { formatTime } = require("../config/common");
-
+const { getCurrentDate } = require("../config/common");
 const mailjetClient = Mailjet.apiConnect(
   process.env.MJ_APIKEY_PUBLIC,
   process.env.MJ_APIKEY_PRIVATE
@@ -146,6 +145,7 @@ const deliveryCtrl = () => {
           })
           .toArray();
 
+        let materialName = "";
         const result = await Promise.all(
           deliveries.map(async (delivery) => {
             // Fetch user data
@@ -158,7 +158,7 @@ const deliveryCtrl = () => {
             const material = await collectionMaterial.findOne({
               _id: new ObjectId(delivery.material),
             });
-            const materialName = material ? material.materialName : null;
+            materialName = material ? material.materialName : null;
 
             // Fetch packaging data
             const packaging = await collectionPackage.findOne({
@@ -189,17 +189,24 @@ const deliveryCtrl = () => {
             Messages: [
               {
                 From: {
-                  Email: "elias@holamicasa.com",
-                  Name: "Archpolymers",
+                  Email: "accounting@archpolymers.com",
+                  Name: selUser?.name,
                 },
                 To: [
                   {
-                    Email: selUser?.email,
-                    Name: "",
+                    Email: "accounting@archpolymers.com",
+                    Name: "Archpolymers",
                   },
                 ],
-                Subject: "Delivery Add",
-                TextPart: `${selUser?.name} sent a delivery request`,
+                Subject: "Delivery Request Information",
+                // TextPart: `${selUser?.name} sent a delivery request`,
+                HTMLPart: `
+                <p>We wanted to inform you that a new delivery request has been submitted. Below are the details for your reference:</p>
+                <p>Delivery Request Information:</p>
+                <p>- Supplier Name: ${selUser.name}</p>
+                <p>- Delivery Date: ${getCurrentDate()}</p>
+                <p>- Materials & Estimated Weight: ${materialName}, ${weight}</p>
+                <p>Please review the request and proceed with scheduling or additional actions as needed.</p>`,
               },
             ],
           });
@@ -493,6 +500,7 @@ const deliveryCtrl = () => {
       const deliverylogsCollection = getDeliveryLogsCollection();
 
       let updateData = {};
+      let currentMaxPo = 0;
       if (status === -1) {
         const selData = await collection.findOne({
           _id: new ObjectId(selDeliveryId),
@@ -517,7 +525,6 @@ const deliveryCtrl = () => {
           return { success: false, message: "Delivery not found." };
         }
       } else {
-        let currentMaxPo = 0;
         if (status === 0) {
           const latestDelivery = await collection
             .find()
@@ -605,16 +612,34 @@ const deliveryCtrl = () => {
         // Send Email
         if (updateData) {
           let emailContent = "";
+
+          let statusMessage;
           if (status === 0) {
-            emailContent = `${user?.name} status has been updated from 'Waiting' to 'Pending for Receiving'`;
+            statusMessage =
+              "We are pleased to inform you that Archpolymer has approved the Delivery Request.";
           } else if (status === 1) {
-            emailContent = `${user?.name} status has been updated from 'Pending for Receiving' to 'Received'`;
+            statusMessage =
+              "We are pleased to inform you that Archpolymer has received the Delivery Request.";
           }
+
+          emailContent = `
+            <p>${statusMessage}</p>
+            <p>Order Details:</p>
+            <p>Company Name: Archpolymer</p>
+            <p>PO# : ${updateData?.po}</p>
+            <p>Estimated Delivery Date: ${updateData?.date} ${new Date(
+            updateData?.time * 1000
+          )
+            .toISOString()
+            .substr(11, 8)}</p>
+            <p>Please proceed with any further actions as needed and prepare for the scheduled delivery.</p>
+            `;
+
           await mailjetClient.post("send", { version: "v3.1" }).request({
             Messages: [
               {
                 From: {
-                  Email: "elias@holamicasa.com",
+                  Email: "accounting@archpolymers.com",
                   Name: "Archpolymers",
                 },
                 To: [
@@ -623,8 +648,8 @@ const deliveryCtrl = () => {
                     Name: "",
                   },
                 ],
-                Subject: "Delivery Status",
-                TextPart: emailContent,
+                Subject: `Delivery Request Accepted by Archpolymer - ${updateData?.po}`,
+                HTMLPart: emailContent,
               },
             ],
           });
@@ -662,6 +687,9 @@ const deliveryCtrl = () => {
       const deliverylogsCollection = getDeliveryLogsCollection();
 
       let updateData = {};
+      let addPo = 0;
+      let addDate = "";
+      let addTime = "";
       const selData = await collection.findOne({
         _id: new ObjectId(selID),
       });
@@ -735,6 +763,17 @@ const deliveryCtrl = () => {
         const insertResult = await deliverylogsCollection.insertOne(
           dataWithoutId
         );
+        if (insertResult.insertedId) {
+          const insertedDocument = await deliverylogsCollection.findOne({
+            _id: insertResult.insertedId,
+          });
+
+          if (insertedDocument) {
+            addPo = insertedDocument.po;
+            addDate = insertedDocument.date;
+            addTime = insertedDocument.time;
+          }
+        }
         updateData = await deliverylogsCollection.findOne({
           _id: new ObjectId(insertResult.insertedId),
         });
@@ -776,7 +815,7 @@ const deliveryCtrl = () => {
             Messages: [
               {
                 From: {
-                  Email: "elias@holamicasa.com",
+                  Email: "accounting@archpolymers.com",
                   Name: "Archpolymers",
                 },
                 To: [
@@ -786,7 +825,18 @@ const deliveryCtrl = () => {
                   },
                 ],
                 Subject: "Delivery Status",
-                TextPart: `${user?.name}'s delivery has been successfully accepted`,
+                HTMLPart: `
+                  <p>We are pleased to inform you that Archpolymer has accepted the Delivery Request.</p>
+                  <p>Order Details:</p>
+                  <p>Company Name: Archpolymer</p>
+                  <p>PO# : ${addPo}</p>
+                  <p>Estimated Delivery Date: ${addDate} ${new Date(
+                  addTime * 1000
+                )
+                  .toISOString()
+                  .substr(11, 8)}</p>
+                  <p>Please proceed with any further actions as needed and prepare for the scheduled delivery.</p>
+                `,
               },
             ],
           });
@@ -873,7 +923,7 @@ const deliveryCtrl = () => {
             Messages: [
               {
                 From: {
-                  Email: "elias@holamicasa.com",
+                  Email: "accounting@archpolymers.com",
                   Name: "Archpolymers",
                 },
                 To: [
@@ -882,8 +932,15 @@ const deliveryCtrl = () => {
                     Name: "",
                   },
                 ],
-                Subject: "Delivery Status",
+                Subject: " Delivery Request Rejected by Archpolymer",
                 TextPart: `${user?.name}'s delivery was disapproved`,
+                HTMLPart: `
+                <p>We regret to inform you that Archpolymer has rejected the Delivery Request.</p>
+                <p>Order Details:</p>
+                <p>Company Name: Archpolymer</p>
+                <p>Reason for Rejection: ${reason}</p>
+                <p>Please review the rejection details and take any necessary actions to resolve the issue or explore alternative solutions. If you require further assistance or have questions regarding the rejection, feel free to contact us.</p>
+                `,
               },
             ],
           });
@@ -1393,21 +1450,33 @@ const deliveryCtrl = () => {
             Messages: [
               {
                 From: {
-                  Email: "elias@holamicasa.com",
+                  Email: "accounting@archpolymers.com",
                   Name: "Archpolymers",
                 },
                 To: [
                   {
-                    Email: userEmail,
+                    Email: "accounting@archpolymers.com",
                     Name: "",
                   },
                 ],
-                Subject: "Delivery Request Update",
-                TextPart: `${userName} has updated the date and time as ${
+                Subject: "Delivery Schedule Change Notification",
+                HTMLPart: `
+                <p>Please be advised that the delivery schedule for Order Number [Order Number] has been updated. Below are the updated details: </p>
+                <p>Updated Delivery Information:</p>
+                <p>- Previous Delivery Date: ${
                   oldDeliveryData?.date
-                }, ${formatTime(
-                  parseInt(oldDeliveryData?.time)
-                )} to ${updateDate}, ${formatTime(parseInt(updateTime))}`,
+                } ${new Date(oldDeliveryData?.time * 1000)
+                  .toISOString()
+                  .substr(11, 8)}</p>
+                <p>- New Delivery Date: ${updateDate} ${new Date(
+                  updateTime * 1000
+                )
+                  .toISOString()
+                  .substr(11, 8)}</p>
+                <p>- Customer Name: ${userName}</p>
+                <p>Kindly update your records accordingly and ensure the new delivery schedule is reflected in the system.</p>
+                <p>Thank you for your attention to this change.</p>
+                `,
               },
             ],
           });

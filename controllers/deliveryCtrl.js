@@ -56,67 +56,76 @@ const deliveryCtrl = () => {
     avatarPath,
     sdsPath
   ) => {
-    const collection = getDeliveryCollection();
-    const collectionLogs = getDeliveryLogsCollection();
-    const collectionUser = getUserCollection();
-    const collectionMaterial = getMaterialCollection();
-    const collectionPackage = getPackageCollection();
-    let curStatus = 0;
-    let currentMaxPo = 0;
-    let curPrice = 0;
+    try {
+      const collection = getDeliveryCollection();
+      const collectionLogs = getDeliveryLogsCollection();
+      const collectionUser = getUserCollection();
+      const collectionMaterial = getMaterialCollection();
+      const collectionPackage = getPackageCollection();
 
-    // Searches the database for a user with the same userId.
-    const selUser = await collectionUser.findOne({ _id: new ObjectId(userId) });
-    if (selUser) {
-      if (selUser?.trust === 1) {
-        curStatus = 1;
-        curPrice = selUser?.price;
+      let curStatus = 0;
+      let currentMaxPo = 0;
+      let curPrice = 0;
 
-        const latestDelivery = await collection
-          .find()
-          .sort({ po: -1 })
-          .limit(1)
-          .toArray();
+      // Validate ObjectId
+      if (!ObjectId.isValid(userId)) {
+        return { success: false, message: "Invalid userId format." };
+      }
 
-        const currentYear = new Date().getFullYear();
-        const yearLastTwoDigits = currentYear % 100;
-        const defaultPo = yearLastTwoDigits * 1000 + 1;
+      // Find user details
+      const selUser = await collectionUser.findOne({
+        _id: new ObjectId(userId),
+      });
 
-        if (latestDelivery.length > 0) {
-          currentMaxPo = latestDelivery[0]?.po;
-        }
+      if (selUser) {
+        if (selUser?.trust === 1) {
+          curStatus = 1;
+          curPrice = selUser?.price;
 
-        const latestLogsDelivery = await collectionLogs
-          .find()
-          .sort({ po: -1 })
-          .limit(1)
-          .toArray();
-        if (latestLogsDelivery.length > 0) {
-          let logMaxPo = latestLogsDelivery[0]?.po;
-          if (currentMaxPo < logMaxPo) {
-            currentMaxPo = logMaxPo;
+          // Get the latest PO number
+          const latestDelivery = await collection
+            .find()
+            .sort({ po: -1 })
+            .limit(1)
+            .toArray();
+
+          const currentYear = new Date().getFullYear();
+          const yearLastTwoDigits = currentYear % 100;
+          const defaultPo = yearLastTwoDigits * 1000 + 1;
+
+          if (latestDelivery.length > 0) {
+            currentMaxPo = latestDelivery[0]?.po || 0;
           }
-        }
 
-        if (currentMaxPo === 0) {
-          currentMaxPo = defaultPo;
-        } else {
-          if (currentMaxPo < defaultPo) {
-            currentMaxPo = defaultPo;
-          } else {
-            currentMaxPo = currentMaxPo + 1;
+          // Check logs collection for max PO
+          const latestLogsDelivery = await collectionLogs
+            .find()
+            .sort({ po: -1 })
+            .limit(1)
+            .toArray();
+
+          if (latestLogsDelivery.length > 0) {
+            let logMaxPo = latestLogsDelivery[0]?.po || 0;
+            currentMaxPo = Math.max(currentMaxPo, logMaxPo);
           }
+
+          // Ensure PO number increments correctly
+          currentMaxPo =
+            currentMaxPo < defaultPo ? defaultPo : currentMaxPo + 1;
         }
       }
-    }
 
-    const deliveryExist = await collection.findOne({
-      date: date,
-      time: parseInt(time, 10),
-    });
-    if (deliveryExist) {
-      return { success: false, message: "You can not deliver at that time." };
-    } else {
+      // Check if a delivery already exists for the same date and time
+      const deliveryExist = await collection.findOne({
+        date: date,
+        time: parseInt(time, 10),
+      });
+
+      if (deliveryExist) {
+        return { success: false, message: "You cannot deliver at that time." };
+      }
+
+      // Insert new delivery
       const delivery = await collection.insertOne({
         userId,
         po: currentMaxPo,
@@ -138,33 +147,47 @@ const deliveryCtrl = () => {
         read: false,
       });
 
-      if (delivery) {
-        const deliveries = await collection
-          .find({
-            read: false,
-          })
-          .toArray();
+      if (!delivery.insertedId) {
+        return { success: false, message: "Failed to insert delivery." };
+      }
 
-        let materialName = "";
-        const result = await Promise.all(
-          deliveries.map(async (delivery) => {
+      // Fetch unread deliveries
+      const deliveries = await collection.find({ read: false }).toArray();
+
+      if (deliveries.length === 0) {
+        return {
+          success: true,
+          message: "The delivery request was added successfully.",
+        };
+      }
+
+      let materialName = "";
+
+      // Use `Promise.all` with proper error handling
+      const result = await Promise.all(
+        deliveries.map(async (delivery) => {
+          try {
             // Fetch user data
             const user = await collectionUser.findOne({
               _id: new ObjectId(delivery.userId),
             });
-            const userName = user ? user.name : null;
+            const userName = user ? user.name : "Unknown User";
 
             // Fetch material data
             const material = await collectionMaterial.findOne({
               _id: new ObjectId(delivery.material),
             });
-            materialName = material ? material.materialName : null;
+            materialName = material
+              ? material.materialName
+              : "Unknown Material";
 
             // Fetch packaging data
             const packaging = await collectionPackage.findOne({
               _id: new ObjectId(delivery.packaging),
             });
-            const packagingName = packaging ? packaging.name : null;
+            const packagingName = packaging
+              ? packaging.name
+              : "Unknown Packaging";
 
             return {
               ...delivery,
@@ -172,26 +195,38 @@ const deliveryCtrl = () => {
               materialName,
               packagingName,
             };
-          })
-        );
+          } catch (error) {
+            console.error("Error processing delivery data:", error);
+            return {
+              ...delivery,
+              userName: "Error",
+              materialName: "Error",
+              packagingName: "Error",
+            };
+          }
+        })
+      );
 
-        // Emit the updated notification count to all clients
-        axios.post("http://localhost:6000/broadcast", {
+      // Emit event for new delivery
+      try {
+        await axios.post("http://localhost:6000/broadcast", {
           type: "ADD_DELIVERY",
           message: "A new delivery has been added",
           count: deliveries.length,
           data: result,
         });
+      } catch (error) {
+        console.error("Broadcasting error:", error);
+      }
 
-        // Send Email
-        if (selUser?.email) {
+      // Send Email Notification
+      if (selUser?.email) {
+        try {
           const collection = getSettingCollection();
           const settings = await collection.findOne({});
-          let adminEmail = "";
-
-          if (settings) {
-            adminEmail = settings.emailaddress;
-          }
+          const adminEmail = settings
+            ? settings.emailaddress
+            : "admin@example.com";
 
           await mailjetClient.post("send", { version: "v3.1" }).request({
             Messages: [
@@ -207,7 +242,6 @@ const deliveryCtrl = () => {
                   },
                 ],
                 Subject: "Delivery Request Information",
-                // TextPart: `${selUser?.name} sent a delivery request`,
                 HTMLPart: `
                 <p>We wanted to inform you that a new delivery request has been submitted. Below are the details for your reference:</p>
                 <p>Delivery Request Information:</p>
@@ -218,17 +252,21 @@ const deliveryCtrl = () => {
               },
             ],
           });
+        } catch (error) {
+          console.error("Email sending error:", error);
         }
-
-        return {
-          success: true,
-          message: "The delivery request added successfully",
-        };
-      } else {
-        return { success: false, message: "MongoDB API error" };
       }
+
+      return {
+        success: true,
+        message: "The delivery request was added successfully",
+      };
+    } catch (error) {
+      console.error("API error in addDelivery:", error);
+      return { success: false, message: "Internal server error" };
     }
   };
+
   const getLastestDelivery = async (userId) => {
     try {
       const collection = getDeliveryCollection();

@@ -217,6 +217,7 @@ const deliveryCtrl = () => {
         });
       } catch (error) {
         console.error("Broadcasting error:", error);
+        return { success: false, message: "Notification error" };
       }
 
       // Send Email Notification
@@ -254,6 +255,7 @@ const deliveryCtrl = () => {
           });
         } catch (error) {
           console.error("Email sending error:", error);
+          return { success: false, message: "Email error" };
         }
       }
 
@@ -744,7 +746,6 @@ const deliveryCtrl = () => {
       }
 
       const selData = await collection.findOne({ _id: new ObjectId(selID) });
-
       if (!selData) {
         return { success: false, message: "Delivery not found." };
       }
@@ -783,7 +784,7 @@ const deliveryCtrl = () => {
       dataWithoutId.quality = quality;
       dataWithoutId.countpackage = new Int32(pkgscount);
       dataWithoutId.packaging = package;
-      dataWithoutId.insepction = insepction; // Fixed typo
+      dataWithoutId.insepction = insepction;
       dataWithoutId.feedback = feedback;
       dataWithoutId.feedbackImage = feedbackImage;
 
@@ -842,17 +843,16 @@ const deliveryCtrl = () => {
           type: "UPDATE_DELIVERY",
           message: "A new delivery log has been added",
           count: 1,
-          deliveryData: updatedDelivery, // Fixed typo: changed 'delieryData' → 'deliveryData'
+          delieryData: updatedDelivery,
         });
       } catch (error) {
         console.error("Broadcasting error:", error);
+        return { success: false, message: "Notification error" };
       }
 
       // Send Email Notification
       if (user?.email) {
         try {
-          const adminEmail = settings?.emailaddress || "admin@example.com";
-
           await mailjetClient.post("send", { version: "v3.1" }).request({
             Messages: [
               {
@@ -879,6 +879,7 @@ const deliveryCtrl = () => {
           });
         } catch (error) {
           console.error("Email sending error:", error);
+          return { success: false, message: "Email error" };
         }
       }
 

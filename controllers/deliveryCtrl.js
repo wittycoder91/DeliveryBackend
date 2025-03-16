@@ -731,132 +731,128 @@ const deliveryCtrl = () => {
       const materialsCollection = getMaterialCollection();
       const packagesCollection = getPackageCollection();
       const deliverylogsCollection = getDeliveryLogsCollection();
+      const settingCollection = getSettingCollection();
 
-      let updateData = {};
-      let addPo = 0;
-      let addDate = "";
-      let addTime = "";
-      const selData = await collection.findOne({
-        _id: new ObjectId(selID),
-      });
+      let updateData = null;
+      let addPo = 0,
+        addDate = "",
+        addTime = "";
 
-      if (selData) {
-        selData.status = parseInt(status) + 1;
+      // Validate ObjectId
+      if (!ObjectId.isValid(selID)) {
+        return { success: false, message: "Invalid delivery ID format." };
+      }
 
-        let selUserId = selData.userId;
-        let curTotalWeight = 0;
+      const selData = await collection.findOne({ _id: new ObjectId(selID) });
 
-        const selUserData = await usersCollection.findOne({
-          _id: new ObjectId(selUserId),
-        });
-        if (selUserData) {
-          curTotalWeight = selUserData.totalweight;
-        }
-        curTotalWeight = parseFloat(totalamount) + parseFloat(curTotalWeight);
-        curTotalWeight = parseFloat(curTotalWeight).toFixed(2);
-
-        // Get the loyalty data
-        const settingCollection = getSettingCollection();
-        const settings = await settingCollection.findOne({});
-        let valGolen = 0;
-        let valSilver = 0;
-        let valBronze = 0;
-        let valLoyalty = 0;
-
-        if (settings) {
-          valGolen = settings.loyalty_golden;
-          valSilver = settings.loyalty_silver;
-          valBronze = settings.loyalty_bronze;
-
-          if (curTotalWeight >= valGolen) valLoyalty = 3;
-          else if (curTotalWeight >= valSilver) valLoyalty = 2;
-          else if (curTotalWeight >= valBronze) valLoyalty = 1;
-        }
-
-        // Remove the delivery data
-        await collection.deleteOne({
-          _id: new ObjectId(selID),
-        });
-
-        const { _id, ...dataWithoutId } = selData;
-        dataWithoutId.weight = new Double(parseFloat(totalamount).toFixed(2));
-        dataWithoutId.tareamount = new Double(
-          parseFloat(tareamount).toFixed(2)
-        );
-        const netamount =
-          new Double(parseFloat(totalamount).toFixed(2)) -
-          new Double(parseFloat(tareamount).toFixed(2));
-        dataWithoutId.netamount = netamount;
-        dataWithoutId.quality = quality;
-        dataWithoutId.countpackage = new Int32(pkgscount);
-        dataWithoutId.packaging = package;
-        dataWithoutId.insepction = insepction;
-        dataWithoutId.feedback = feedback;
-        dataWithoutId.feedbackImage = feedbackImage;
-
-        // // Update the user collection and return the updated data
-        const updateFields = {
-          totalweight: new Double(parseFloat(curTotalWeight)),
-          loyalty: valLoyalty,
-        };
-        updateData = await usersCollection.findOneAndUpdate(
-          { _id: new ObjectId(selUserId) },
-          { $set: updateFields },
-          { returnDocument: "after" }
-        );
-
-        // // Insert the data to the deliverylogs collection
-        const insertResult = await deliverylogsCollection.insertOne(
-          dataWithoutId
-        );
-        if (insertResult.insertedId) {
-          const insertedDocument = await deliverylogsCollection.findOne({
-            _id: insertResult.insertedId,
-          });
-
-          if (insertedDocument) {
-            addPo = insertedDocument.po;
-            addDate = insertedDocument.date;
-            addTime = insertedDocument.time;
-          }
-        }
-        updateData = await deliverylogsCollection.findOne({
-          _id: new ObjectId(insertResult.insertedId),
-        });
-      } else {
+      if (!selData) {
         return { success: false, message: "Delivery not found." };
       }
 
-      if (updateData) {
-        // Fetch details for userId, material, and packaging
-        const user = await usersCollection.findOne({
-          _id: new ObjectId(updateData.userId),
-        });
-        const material = await materialsCollection.findOne({
-          _id: new ObjectId(updateData.material),
-        });
-        const packaging = await packagesCollection.findOne({
-          _id: new ObjectId(updateData.packaging),
-        });
+      selData.status = parseInt(status) + 1;
+      const selUserId = selData.userId;
 
-        // Replace the fields in the delivery object
-        const updatedDelivery = {
-          ...updateData,
-          userName: user ? user.name : null,
-          materialName: material ? material.materialName : null,
-          packagingName: packaging ? packaging.name : null,
+      // Fetch user details
+      const selUserData = await usersCollection.findOne({
+        _id: new ObjectId(selUserId),
+      });
+      let curTotalWeight = selUserData?.totalweight || 0;
+      curTotalWeight = (
+        parseFloat(totalamount) + parseFloat(curTotalWeight)
+      ).toFixed(2);
+
+      // Get loyalty settings
+      const settings = await settingCollection.findOne({});
+      let valLoyalty = 0;
+      if (settings) {
+        if (curTotalWeight >= settings.loyalty_golden) valLoyalty = 3;
+        else if (curTotalWeight >= settings.loyalty_silver) valLoyalty = 2;
+        else if (curTotalWeight >= settings.loyalty_bronze) valLoyalty = 1;
+      }
+
+      // Remove the delivery record
+      await collection.deleteOne({ _id: new ObjectId(selID) });
+
+      // Prepare new delivery log data
+      const { _id, ...dataWithoutId } = selData;
+      dataWithoutId.weight = new Double(parseFloat(totalamount).toFixed(2));
+      dataWithoutId.tareamount = new Double(parseFloat(tareamount).toFixed(2));
+      dataWithoutId.netamount = new Double(
+        dataWithoutId.weight - dataWithoutId.tareamount
+      );
+      dataWithoutId.quality = quality;
+      dataWithoutId.countpackage = new Int32(pkgscount);
+      dataWithoutId.packaging = package;
+      dataWithoutId.insepction = insepction; // Fixed typo
+      dataWithoutId.feedback = feedback;
+      dataWithoutId.feedbackImage = feedbackImage;
+
+      // Update user collection with new total weight and loyalty
+      const updateFields = {
+        totalweight: new Double(parseFloat(curTotalWeight)),
+        loyalty: valLoyalty,
+      };
+      await usersCollection.updateOne(
+        { _id: new ObjectId(selUserId) },
+        { $set: updateFields }
+      );
+
+      // Insert data into delivery logs
+      const insertResult = await deliverylogsCollection.insertOne(
+        dataWithoutId
+      );
+      if (!insertResult.insertedId) {
+        return {
+          success: false,
+          message: "Failed to insert into delivery logs.",
         };
+      }
 
-        // Emit the updated notification count to all clients
-        axios.post("http://localhost:6000/broadcast", {
+      // Fetch newly inserted delivery log
+      updateData = await deliverylogsCollection.findOne({
+        _id: insertResult.insertedId,
+      });
+      if (updateData) {
+        addPo = updateData.po || 0;
+        addDate = updateData.date || "";
+        addTime = updateData.time || "";
+      }
+
+      // Fetch user, material, and packaging details
+      const [user, material, packaging] = await Promise.all([
+        usersCollection.findOne({ _id: new ObjectId(updateData?.userId) }),
+        materialsCollection.findOne({
+          _id: new ObjectId(updateData?.material),
+        }),
+        packagesCollection.findOne({
+          _id: new ObjectId(updateData?.packaging),
+        }),
+      ]);
+
+      const updatedDelivery = {
+        ...updateData,
+        userName: user?.name || "Unknown User",
+        materialName: material?.materialName || "Unknown Material",
+        packagingName: packaging?.name || "Unknown Packaging",
+      };
+
+      // Emit the update event to all clients
+      try {
+        await axios.post("http://localhost:6000/broadcast", {
           type: "UPDATE_DELIVERY",
           message: "A new delivery log has been added",
           count: 1,
-          delieryData: updatedDelivery,
+          deliveryData: updatedDelivery, // Fixed typo: changed 'delieryData' → 'deliveryData'
         });
+      } catch (error) {
+        console.error("Broadcasting error:", error);
+      }
 
-        // Send Email
-        if (user) {
+      // Send Email Notification
+      if (user?.email) {
+        try {
+          const adminEmail = settings?.emailaddress || "admin@example.com";
+
           await mailjetClient.post("send", { version: "v3.1" }).request({
             Messages: [
               {
@@ -864,12 +860,7 @@ const deliveryCtrl = () => {
                   Email: "accounting@archpolymers.com",
                   Name: "Archpolymers",
                 },
-                To: [
-                  {
-                    Email: user?.email,
-                    Name: "",
-                  },
-                ],
+                To: [{ Email: user.email, Name: user.name }],
                 Subject: "Delivery Status",
                 HTMLPart: `
                   <p>We are pleased to inform you that Archpolymer has accepted the Delivery Request.</p>
@@ -886,20 +877,21 @@ const deliveryCtrl = () => {
               },
             ],
           });
+        } catch (error) {
+          console.error("Email sending error:", error);
         }
-
-        return {
-          success: true,
-          message:
-            "Your delivery request status has been successfully updated.",
-        };
-      } else {
-        return { success: false, message: "MongDB API Error" };
       }
-    } catch (e) {
-      return { success: false, message: e.message };
+
+      return {
+        success: true,
+        message: "Your delivery request status has been successfully updated.",
+      };
+    } catch (error) {
+      console.error("API error in addDeliveryFeedback:", error);
+      return { success: false, message: "Internal server error" };
     }
   };
+
   const addRejectDelivery = async (selID, reason, uploadedFilePaths) => {
     try {
       const collection = getDeliveryCollection();

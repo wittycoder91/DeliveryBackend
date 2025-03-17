@@ -155,9 +155,10 @@ const deliveryCtrl = () => {
       const deliveries = await collection.find({ read: false }).toArray();
 
       let materialName = "";
+      let result = [];
       if (deliveries.length > 0) {
         // Use `Promise.all` with proper error handling
-        const result = await Promise.all(
+        result = await Promise.all(
           deliveries.map(async (delivery) => {
             try {
               // Fetch user data

@@ -154,58 +154,52 @@ const deliveryCtrl = () => {
       // Fetch unread deliveries
       const deliveries = await collection.find({ read: false }).toArray();
 
-      if (deliveries.length === 0) {
-        return {
-          success: true,
-          message: "The delivery request was added successfully.",
-        };
-      }
-
       let materialName = "";
+      if (deliveries.length > 0) {
+        // Use `Promise.all` with proper error handling
+        const result = await Promise.all(
+          deliveries.map(async (delivery) => {
+            try {
+              // Fetch user data
+              const user = await collectionUser.findOne({
+                _id: new ObjectId(delivery.userId),
+              });
+              const userName = user ? user.name : "Unknown User";
 
-      // Use `Promise.all` with proper error handling
-      const result = await Promise.all(
-        deliveries.map(async (delivery) => {
-          try {
-            // Fetch user data
-            const user = await collectionUser.findOne({
-              _id: new ObjectId(delivery.userId),
-            });
-            const userName = user ? user.name : "Unknown User";
+              // Fetch material data
+              const material = await collectionMaterial.findOne({
+                _id: new ObjectId(delivery.material),
+              });
+              materialName = material
+                ? material.materialName
+                : "Unknown Material";
 
-            // Fetch material data
-            const material = await collectionMaterial.findOne({
-              _id: new ObjectId(delivery.material),
-            });
-            materialName = material
-              ? material.materialName
-              : "Unknown Material";
+              // Fetch packaging data
+              const packaging = await collectionPackage.findOne({
+                _id: new ObjectId(delivery.packaging),
+              });
+              const packagingName = packaging
+                ? packaging.name
+                : "Unknown Packaging";
 
-            // Fetch packaging data
-            const packaging = await collectionPackage.findOne({
-              _id: new ObjectId(delivery.packaging),
-            });
-            const packagingName = packaging
-              ? packaging.name
-              : "Unknown Packaging";
-
-            return {
-              ...delivery,
-              userName,
-              materialName,
-              packagingName,
-            };
-          } catch (error) {
-            console.error("Error processing delivery data:", error);
-            return {
-              ...delivery,
-              userName: "Error",
-              materialName: "Error",
-              packagingName: "Error",
-            };
-          }
-        })
-      );
+              return {
+                ...delivery,
+                userName,
+                materialName,
+                packagingName,
+              };
+            } catch (error) {
+              console.error("Error processing delivery data:", error);
+              return {
+                ...delivery,
+                userName: "Error",
+                materialName: "Error",
+                packagingName: "Error",
+              };
+            }
+          })
+        );
+      }
 
       // Emit event for new delivery
       try {
